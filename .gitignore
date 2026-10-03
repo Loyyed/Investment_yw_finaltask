@@ -1,0 +1,11 @@
+runtime/
+projects/*
+!projects/README.md
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.DS_Store
+Thumbs.db
+会话交接/logs/
+会话交接/tmp/

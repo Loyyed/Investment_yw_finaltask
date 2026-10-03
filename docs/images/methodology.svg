@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620">
+<rect width="1200" height="620" rx="20" fill="#f4f7f8"/>
+<g font-family="Microsoft YaHei, PingFang SC, sans-serif" fill="#193246">
+<text x="48" y="64" font-size="30" font-weight="bold">从原始资料，到可核验的公司分析</text>
+<text x="48" y="99" font-size="17" fill="#627587">每家公司独立建项目；事实、机制解释、预测和证据缺口分别记录。</text>
+<g fill="#fff" stroke="#dbe5e9" stroke-width="2">
+<rect x="48" y="137" width="246" height="110" rx="12"/><rect x="334" y="137" width="246" height="110" rx="12"/>
+<rect x="620" y="137" width="246" height="110" rx="12"/><rect x="906" y="137" width="246" height="110" rx="12"/>
+<rect x="48" y="292" width="1104" height="118" rx="12"/><rect x="48" y="449" width="530" height="120" rx="12"/><rect x="620" y="449" width="532" height="120" rx="12"/>
+</g>
+<g font-size="21" font-weight="bold"><text x="68" y="177">01 资料与任务</text><text x="354" y="177">02 口径与可比性</text><text x="640" y="177">03 原文与算术核验</text><text x="926" y="177">04 三维研究</text></g>
+<g font-size="15" fill="#627587"><text x="68" y="210">保留原件、解包、按正文识别</text><text x="68" y="232">任务映射、来源索引与阅读覆盖</text><text x="354" y="210">期间 / 单位 / 主体 / 定义</text><text x="354" y="232">集团与母公司、重述与增长</text><text x="640" y="210">用户确认或明确授权Agent</text><text x="640" y="232">绑定来源、输入与真实核准身份</text><text x="926" y="210">商业模式 / 行业竞争</text><text x="926" y="232">竞争优势 / 反证条件</text></g>
+<g fill="#166d75" font-size="30"><text x="305" y="203">→</text><text x="590" y="203">→</text><text x="876" y="203">→</text></g>
+<text x="72" y="331" font-size="21" font-weight="bold">分析链：优势来源 → 影响机制 → 可观察结果 → 模仿壁垒 → 反证条件</text>
+<text x="72" y="367" font-size="17" fill="#627587">解释以当前有效Fact支撑；因果、壁垒及行业阶段必须给出支持边界，缺证保留Unknown。</text>
+<text x="72" y="391" font-size="15" fill="#627587">行业适配：消费、工业、金融及多业务公司分别选择指标，不机械复用上一家公司的结论。</text>
+<text x="72" y="486" font-size="21" font-weight="bold">05 中文报告、内容验收与交接</text><text x="72" y="518" font-size="16" fill="#627587">结论先行，附表图、来源、修正历史与缺证清单。</text><text x="72" y="546" font-size="16" fill="#627587">只读精简CURRENT；内容确认与真实签署分开。</text>
+<text x="644" y="486" font-size="21" font-weight="bold">持续更新：只复核受影响条目</text><text x="644" y="518" font-size="16" fill="#627587">原件或计算依赖变化 → 旧Fact失效 → 重新核验。</text><text x="644" y="546" font-size="16" fill="#627587">保留历史，独立Git，迁移后依然能返回原件。</text>
+</g></svg>

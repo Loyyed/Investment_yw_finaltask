@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "name": "投资学公司分析通用工作台",
+  "version": "1.0.0",
+  "description": "以原件、来源绑定核准和三维机制框架完成可复用的公司分析",
+  "company_data_included": false,
+  "automatic_agent_authorization": false,
+  "python_minimum": "3.10",
+  "core_dependencies": "Python标准库",
+  "skill": "skills/investment-company-analysis/SKILL.md"
+}

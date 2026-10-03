@@ -1,0 +1,4 @@
+interface:
+  display_name: "投资学公司分析"
+  short_description: "以原始披露、来源绑定核验与三维机制框架完成可复用的公司分析"
+  default_prompt: "使用 $investment-company-analysis 为指定公司建立独立项目，按原始资料开展三维分析，提供简洁核验入口、中文报告与精简会话交接。"
