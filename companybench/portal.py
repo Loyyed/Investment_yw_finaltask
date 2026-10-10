@@ -4,6 +4,8 @@ from urllib.parse import urlparse, parse_qs, urlencode
 import base64, html, json, mimetypes, secrets, sys, webbrowser, re
 from .core import ROOT, ReviewStore, WorkbenchError, create_project, import_sources, contained, file_name, atomic_text, read_json
 
+from .research import research_summary
+
 def projects(root):
     root=Path(root).resolve()
     if (root/'project.json').exists():return {root.name:root}
@@ -82,8 +84,9 @@ def make_server(root=ROOT,port=0):
                         except (WorkbenchError,OSError,KeyError):binding=None
                         value['selected']={'id':selected,'settings':settings,'records':records,'sources':store.source_rows(),
                             'counts':{'Fact':sum(r['effective_state']=='Fact' for r in records),'Unknown':sum(r['effective_state']=='Unknown' for r in records),'total':len(records)},
+                            'research':research_summary(p,records),
                             'delegations':store._read()['delegations'],'report_binding':binding,'content_approved':store.report_approved(),
-                            'prompt':f'请先读取 {p.as_posix()}/AGENTS.md 和会话交接/CURRENT.md，再使用 skills/investment-company-analysis/SKILL.md 分析{settings["company"]}。先核材料和实际要求，完整推进原值、口径、变化及三维研究；在我的授权范围内执行，核验时给我简洁的本地入口，保留Unknown与真实历史，最后给中文报告和精简交接。'}
+                            'prompt':f'请先读取 {p.as_posix()}/AGENTS.md 和会话交接/CURRENT.md，再使用 skills/investment-company-analysis/SKILL.md 分析{settings["company"]}。先读docs/learning-path.md并核材料和实际要求，按work/contract-acceptance.md逐条执行；检查work/yearly-changes.md各年重大变化，完整推进原值、口径、变化及三维研究；在我的授权范围内执行，核验时给我简洁的本地入口，保留Unknown与真实历史，最后给中文报告和精简交接。'}
                     self.send(value);return
                 if route.path=='/file':
                     selected=query.get('project',[''])[0]

@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "stages": [
+    {
+      "id": "scope",
+      "title": "1 明确问题与资料",
+      "question": "研究哪家公司、哪个时点、哪些合同？",
+      "files": [
+        "tasks/research-plan.md",
+        "work/contract-acceptance.md"
+      ],
+      "record_ids": [],
+      "work_status": "未开始",
+      "note": ""
+    },
+    {
+      "id": "extract",
+      "title": "2 定位、提取与口径",
+      "question": "数字在哪一页？期间、单位和主体是否对应？",
+      "files": [
+        "work/metric-scope.md"
+      ],
+      "record_ids": [],
+      "work_status": "未开始",
+      "note": ""
+    },
+    {
+      "id": "changes",
+      "title": "3 跨年变化与运算",
+      "question": "两期可比吗？哪些重大变化需要停算或重新解释？",
+      "files": [
+        "work/yearly-changes.md"
+      ],
+      "record_ids": [],
+      "work_status": "未开始",
+      "note": ""
+    },
+    {
+      "id": "mechanism",
+      "title": "4 经营、行业与优势",
+      "question": "收入、成本、资本和现金怎样相连？什么会证明解释错了？",
+      "files": [
+        "work/claim-notes.md"
+      ],
+      "record_ids": [],
+      "work_status": "未开始",
+      "note": ""
+    },
+    {
+      "id": "report",
+      "title": "5 报告与人工裁决",
+      "question": "结论得到什么支持，还有哪些Unknown影响判断？",
+      "files": [
+        "outputs/analysis-report.md",
+        "docs/acceptance.md"
+      ],
+      "record_ids": [],
+      "work_status": "未开始",
+      "note": ""
+    },
+    {
+      "id": "handover",
+      "title": "6 签署、版本与交接",
+      "question": "真实确认和签署已记录吗？下一人从哪里继续？",
+      "files": [
+        "会话交接/CURRENT.md"
+      ],
+      "record_ids": [],
+      "work_status": "未开始",
+      "note": ""
+    }
+  ],
+  "network_policy": "附件优先；网络仅作解释/新闻旁证，单独记录，不补核心数据",
+  "final_judgment": "人工确认",
+  "signature_status": "待实际签署"
+}

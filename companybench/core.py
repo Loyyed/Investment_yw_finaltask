@@ -106,6 +106,7 @@ def create_project(company, code='', profile='general', destination=None, kit=RO
         settings = {'schema_version':1,'company':company,'code':str(code),'profile':profile,
                     'created_at':now(),'information_cutoff':'','research_purpose':'公司分析',
                     'source_scope':'用户提供资料；按后续实际任务授权扩展',
+                    'network_policy':'按本项目实际用户指令；未授权时不使用外部数据',
                     'review_mode':'human-first','reviewer':'','executor':'','signature_status':'pending',
                     'required_dimensions':['商业模式','行业竞争','竞争优势']}
         save_json(temp/'project.json',settings)
@@ -115,9 +116,12 @@ def create_project(company, code='', profile='general', destination=None, kit=RO
         save_json(temp/'evidence/ledger.json',{'schema_version':1,'records':{},'events':[],'delegations':[],'approvals':[]})
         save_json(temp/'work/report-scope.json',{'ready':False,'path':'outputs/analysis-report.md','record_ids':[]})
         if os.name=='nt':atomic_text(temp/'runtime/python-path.txt',sys.executable+'\n')
+        navigation = read_json(kit/'templates/研究导航.json')
+        if navigation: save_json(temp/'work/research-navigation.json', navigation)
         for source in (kit/'templates').glob('*.md'):
             mapping={'研究计划.md':'tasks/research-plan.md','口径裁决.md':'work/metric-scope.md','机制底稿.md':'work/claim-notes.md',
-                     '最终报告.md':'outputs/analysis-report.md','内容验收.md':'docs/acceptance.md','会话交接.md':'会话交接/CURRENT.md','稳定约定.md':'会话交接/DECISIONS.md'}
+                     '最终报告.md':'outputs/analysis-report.md','内容验收.md':'docs/acceptance.md','会话交接.md':'会话交接/CURRENT.md','稳定约定.md':'会话交接/DECISIONS.md','年度变化.md':'work/yearly-changes.md',
+                     '合同验收映射.md':'work/contract-acceptance.md','学习路径.md':'docs/learning-path.md'}
             text=source.read_text(encoding='utf-8').replace('{{公司}}',company).replace('{{代码}}',str(code)).replace('{{行业适配}}',profile)
             atomic_text(temp/mapping[source.name],text)
         for f in ['workbench.py','启动工作台.cmd','启动工作台.sh','AGENTS.md']:

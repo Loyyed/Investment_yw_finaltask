@@ -4,6 +4,12 @@
 
 工作链为：**资料与要求 → 原文定位 → 结构化提取 → 口径裁决 → 可比性与变化 → 商业模式、行业竞争、竞争优势 → 报告、验收与交接**。
 
+## 本轮新增：从学习到逐项研究
+
+工作窗口新增六步研究导航，新公司自动获得[学习路径](templates/学习路径.md)、[年度变化底稿](templates/年度变化.md)与[合同验收映射](templates/合同验收映射.md)。导航区显示文件准备状态、登记进度及失效的Fact依赖，不把文件齐全视为合同验收。
+
+方法参考新增[课件学习](skills/investment-company-analysis/references/course-learning.md)和[逐项操作](skills/investment-company-analysis/references/research-operations.md)。新项目从收入、成本、资本、现金四环节开始，核对每年重大变化，再开展行业与优势检验。已有公司项目保留原账本，按需补导航，不重建人工历史。
+
 ## 最快开始
 
 1. **双击[启动工作台.cmd](启动工作台.cmd)**。Windows本机将打开浏览器；macOS/Linux可运行 `sh 启动工作台.sh`，或在任意平台执行 `python workbench.py serve`。

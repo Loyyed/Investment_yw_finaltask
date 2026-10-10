@@ -17,6 +17,8 @@ description: 建立或继续基于原始年报和任务材料的公司分析，�
 
 | 当前工作 | 只需读取的参考 |
 | --- | --- |
+| 充分学习课程、初学者公式理解或行业/优势方法 | [course-learning.md](references/course-learning.md) |
+| 多合同逐项执行、年度变化、清洗与签署流程 | [research-operations.md](references/research-operations.md) |
 | 新公司/新增材料/任务映射 | [workflow.md](references/workflow.md) |
 | 原值、聊天核准、代理核准、Fact失效或撤回 | [evidence-and-review.md](references/evidence-and-review.md) |
 | 口径、同比、均价毛利、生产成本或现金转换 | [calculations-and-comparability.md](references/calculations-and-comparability.md) |
