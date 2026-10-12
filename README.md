@@ -108,3 +108,5 @@ python workbench.py series-audit --source 路径/数据.csv --cutoff 2024-12-31 
 ```
 
 截止期只按观测日期筛选，不保证当时可获；更新日不是公告日。命令不会确认Fact，拒绝覆盖原CSV或已有结果，冲突/缺元数据不自动修正。核心仅Python标准库。完整验证见[补充方法与验证](docs/2026-10-12-补充方法与验证.md)。
+
+字段时间含义须有说明：rtime没有元数据时不推定更新日或公开日。只读审查新增中性计数included_rows_rtime_after_cutoff；旧updated计数保留兼容，仅做日期比较，不证明更新或历史可获性。

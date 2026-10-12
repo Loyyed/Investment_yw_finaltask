@@ -59,8 +59,10 @@ def profile_series(source,cutoff=None):
         'blank_fields':dict(blanks),'duplicate_records':len(duplicates),'conflicting_records':len(conflicts),
         'conflict_examples':conflicts[:12],'invalid_dates':invalid,'observation_cutoff':cutoff,
         'unit_metadata_present':'unit' in header,'publication_date_present':'publication_date' in header,
+        'included_rows_rtime_after_cutoff':counts.get('included_rows_updated_after_cutoff',0),
+        'rtime_semantics':'未获字段定义时Unknown；旧updated计数字段仅比较日期，不证明更新时间',
         'fact_confirmation':False,'source_unchanged':hashlib.sha256(source.read_bytes()).hexdigest()==sha,
-        'limitations':['期间筛选不等于当时可获，rtime不冒充披露日','累计值不按月求和；停更/同名序列不拼接',
+        'limitations':['期间筛选不等于当时可获，rtime业务含义待核，不冒充更新日或披露日','累计值不按月求和；停更/同名序列不拼接',
                        '无单位和细分定义时不计算份额/可比净溢价','供应商附件不冒充一手公告或学生核验'],
         'catalog':list(groups.values())}
 
