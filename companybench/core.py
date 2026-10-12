@@ -121,7 +121,7 @@ def create_project(company, code='', profile='general', destination=None, kit=RO
         for source in (kit/'templates').glob('*.md'):
             mapping={'研究计划.md':'tasks/research-plan.md','口径裁决.md':'work/metric-scope.md','机制底稿.md':'work/claim-notes.md',
                      '最终报告.md':'outputs/analysis-report.md','内容验收.md':'docs/acceptance.md','会话交接.md':'会话交接/CURRENT.md','稳定约定.md':'会话交接/DECISIONS.md','年度变化.md':'work/yearly-changes.md',
-                     '合同验收映射.md':'work/contract-acceptance.md','学习路径.md':'docs/learning-path.md'}
+                     '合同验收映射.md':'work/contract-acceptance.md','学习路径.md':'docs/learning-path.md','行业数据字典.md':'work/series-definition.md'}
             text=source.read_text(encoding='utf-8').replace('{{公司}}',company).replace('{{代码}}',str(code)).replace('{{行业适配}}',profile)
             atomic_text(temp/mapping[source.name],text)
         for f in ['workbench.py','启动工作台.cmd','启动工作台.sh','AGENTS.md']:

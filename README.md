@@ -90,3 +90,13 @@ python scripts/check_bundle.py
 ## 给下一次会话的最少上下文
 
 只读该公司会话交接/CURRENT.md，再按需进入当前报告、任务及证据接口。CURRENT仅记录当前状态、授权索引、关键冲突、成果位置与下一步；详细底稿保留在文件里，完整日志和临时文件不成为默认阅读内容。这样既能快速接手，也能从结论返回原件。
+
+## 2026-10-12补充：附件时间序列与修正记录
+
+新增行业数据字典和[补充学习方法](skills/investment-company-analysis/references/supplementary-research.md)，覆盖报价层级、时间窗口、供应商/原公告区分，以及公式/口径冲突。新项目自动附work/series-definition.md空字典，第二步导航可直接查看。只读检查示例：
+
+```text
+python workbench.py series-audit --source 路径/数据.csv --cutoff 2024-12-31 --output 路径/检查结果.json
+```
+
+截止期只按观测日期筛选，不保证当时可获；更新日不是公告日。命令不会确认Fact，拒绝覆盖原CSV或已有结果，冲突/缺元数据不自动修正。核心仅Python标准库。完整验证见[补充方法与验证](docs/2026-10-12-补充方法与验证.md)。

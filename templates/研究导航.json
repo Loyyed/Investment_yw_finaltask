@@ -18,7 +18,8 @@
       "title": "2 定位、提取与口径",
       "question": "数字在哪一页？期间、单位和主体是否对应？",
       "files": [
-        "work/metric-scope.md"
+        "work/metric-scope.md",
+        "work/series-definition.md"
       ],
       "record_ids": [],
       "work_status": "未开始",
