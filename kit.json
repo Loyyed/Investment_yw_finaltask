@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "name": "投资学公司分析通用工作台",
-  "version": "1.0.0",
-  "description": "以原件、来源绑定核准和三维机制框架完成可复用的公司分析",
+  "version": "2.0.0",
+  "description": "基于原件与真实核验，从材料、计算、经营行业研究到情景估值及中文报告的本地工作台",
   "company_data_included": false,
   "automatic_agent_authorization": false,
   "python_minimum": "3.10",

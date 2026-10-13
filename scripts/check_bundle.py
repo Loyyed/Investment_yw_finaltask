@@ -27,7 +27,7 @@ text=skill.read_text(encoding='utf-8')
 checks.append({'name':'技能入口及渐进参考','pass':text.startswith('---\nname: investment-company-analysis') and '[TODO' not in text and len(text.splitlines())<150})
 kit=json.loads((ROOT/'kit.json').read_text(encoding='utf-8'))
 checks.append({'name':'新工作台无公司数据和自动授权','pass':kit['company_data_included'] is False and kit['automatic_agent_authorization'] is False and not (ROOT/'project.json').exists() and not any(p.name in ('ledger.json','manifest.json') or p.suffix.lower() in ('.pdf','.docx','.xlsx','.pptx','.zip','.pem','.key') for p in files)})
-checks.append({'name':'报告与操作模板齐全','pass':len(list((ROOT/'templates').glob('*.md')))==7 and all((ROOT/p).is_file() for p in ['README.md','AGENTS.md','workbench.py','启动工作台.cmd','启动工作台.sh','companybench/ui.html','companybench/core.py','companybench/portal.py','docs/操作指南.md'])})
+checks.append({'name':'报告与操作模板齐全','pass':all((ROOT/'templates'/name).is_file() for name in ('研究计划.md','口径裁决.md','机制底稿.md','最终报告.md','内容验收.md','会话交接.md','稳定约定.md','学习路径.md','年度变化.md','合同验收映射.md','行业数据字典.md')) and all((ROOT/p).is_file() for p in ['README.md','AGENTS.md','workbench.py','启动工作台.cmd','启动工作台.sh','companybench/ui.html','companybench/core.py','companybench/portal.py','docs/操作指南.md'])})
 failed=errors+[c['name'] for c in checks if not c['pass']]
 value={'checks':checks,'errors':failed,'bundle_file_count':len(files),'company_data_included':False}
 print(json.dumps(value,ensure_ascii=False,indent=2))

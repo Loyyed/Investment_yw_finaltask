@@ -1,16 +1,15 @@
 from pathlib import Path
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, urlencode
-import base64, html, json, mimetypes, secrets, sys, webbrowser, re
+import base64, html, json, mimetypes, secrets, sys, webbrowser, re, subprocess
 from .core import ROOT, ReviewStore, WorkbenchError, create_project, import_sources, contained, file_name, atomic_text, read_json
 
 from .research import research_summary
+from .workspace import inventory, link_project, project_info, selected_state
+from .workflow import save_draft, save_contracts, scenario, generate_report, model_current,report_fingerprint,record_signature
 
 def projects(root):
-    root=Path(root).resolve()
-    if (root/'project.json').exists():return {root.name:root}
-    directory=root/'projects'
-    return {p.name:p for p in sorted(directory.iterdir()) if p.is_dir() and not p.is_symlink() and (p/'project.json').is_file()} if directory.exists() else {}
+    return {key:entry['path'] for key,entry in inventory(root).items()}
 
 def markdown_html(text,base,project):
     def inline(s):
@@ -59,7 +58,7 @@ def make_server(root=ROOT,port=0):
             elif isinstance(data,str):data=data.encode('utf-8')
             self.send_response(status);self.send_header('Content-Type',content);self.send_header('Content-Length',str(len(data)))
             self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff')
-            self.send_header('Content-Security-Policy',"default-src 'self'; style-src 'unsafe-inline'; script-src 'nonce-"+token+"'; connect-src 'self'; frame-ancestors 'none'" if self.path.split('?')[0]=='/' else "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; sandbox allow-popups allow-top-navigation-by-user-activation")
+            self.send_header('Content-Security-Policy',"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'nonce-"+token+"'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'" if self.path.split('?')[0]=='/' else "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; sandbox allow-popups allow-top-navigation-by-user-activation")
             if disposition:self.send_header('Content-Disposition',disposition)
             self.end_headers();self.wfile.write(data)
         def host_ok(self):
@@ -76,18 +75,36 @@ def make_server(root=ROOT,port=0):
                 if route.path=='/':
                     page=(Path(__file__).parent/'ui.html').read_text(encoding='utf-8').replace('__TOKEN__',token)
                     self.send(page,content='text/html; charset=utf-8');return
+                if route.path in ('/assets/ui.js','/assets/ui.css'):
+                    name=route.path.rsplit('/',1)[1]
+                    self.send((Path(__file__).parent/name).read_bytes(),content='text/javascript; charset=utf-8' if name.endswith('.js') else 'text/css; charset=utf-8');return
                 if route.path=='/api/state':
-                    inventory=projects(root);selected=query.get('project',[''])[0];value={'projects':[{'id':k,**read_json(p/'project.json')} for k,p in inventory.items()], 'single_project':(root/'project.json').exists()}
+                    entries=inventory(root);selected=query.get('project',[''])[0];value={'projects':[{'id':k,**project_info(e),'mode':e['mode']} for k,e in entries.items()], 'single_project':(root/'project.json').exists()}
                     if selected:
-                        p=self.project(selected);store=ReviewStore(p);records=store.records();settings=read_json(p/'project.json')
-                        try:binding=store.report_binding()
-                        except (WorkbenchError,OSError,KeyError):binding=None
-                        value['selected']={'id':selected,'settings':settings,'records':records,'sources':store.source_rows(),
-                            'counts':{'Fact':sum(r['effective_state']=='Fact' for r in records),'Unknown':sum(r['effective_state']=='Unknown' for r in records),'total':len(records)},
-                            'research':research_summary(p,records),
-                            'delegations':store._read()['delegations'],'report_binding':binding,'content_approved':store.report_approved(),
-                            'prompt':f'请先读取 {p.as_posix()}/AGENTS.md 和会话交接/CURRENT.md，再使用 skills/investment-company-analysis/SKILL.md 分析{settings["company"]}。先读docs/learning-path.md并核材料和实际要求，按work/contract-acceptance.md逐条执行；检查work/yearly-changes.md各年重大变化，完整推进原值、口径、变化及三维研究；在我的授权范围内执行，核验时给我简洁的本地入口，保留Unknown与真实历史，最后给中文报告和精简交接。'}
+                        if selected not in entries:raise WorkbenchError('项目不存在')
+                        value['selected']=selected_state(entries[selected],selected)
+                        value['selected']['latest_report']=read_json(root/'runtime/latest-reports'/f'{selected}.json',None)
+                        latest=value['selected']['latest_report']
+                        value['selected']['report_stale']=bool(latest and latest['fingerprint']!=report_fingerprint(value['selected']))
+                        for m in value['selected']['models']:m['current']=model_current(m,value['selected']['records'])
                     self.send(value);return
+                if route.path=='/api/export':
+                    selected=query.get('project',[''])[0];self.project(selected)
+                    report=read_json(root/'runtime/latest-reports'/f'{selected}.json',None)
+                    if not report:raise WorkbenchError('请先生成本版报告')
+                    entry=inventory(root)[selected]
+                    if report['fingerprint']!=report_fingerprint(selected_state(entry,selected)):
+                        raise WorkbenchError('研究草稿、依据或情景已变化，请生成当前版本；历史报告仍保留在原目录')
+                    fmt=query.get('format',['html'])[0]
+                    if fmt=='signature':
+                        state=selected_state(entry,selected);receipt=state.get('current_signature')
+                        if not receipt:raise WorkbenchError('本版尚无实际签署记录')
+                        self.send(receipt,disposition='attachment');return
+                    if fmt not in ('md','html','json'):raise WorkbenchError('仅支持Markdown、HTML与报告依据JSON导出')
+                    base=root/'runtime/generated-reports'/selected if entry['mode']=='legacy' else entry['path']/'outputs/workbench-reports'
+                    p=contained(base,Path(report[fmt]).name)
+                    self.send(p.read_bytes(),content={'html':'text/html; charset=utf-8','md':'text/markdown; charset=utf-8','json':'application/json; charset=utf-8'}[fmt],
+                              disposition='attachment' if query.get('download',[''])[0]=='1' else None);return
                 if route.path=='/file':
                     selected=query.get('project',[''])[0]
                     base=self.project(selected) if selected else root
@@ -121,7 +138,22 @@ def make_server(root=ROOT,port=0):
                     if (root/'project.json').exists():raise WorkbenchError('独立公司项目内不创建其他公司；请从通用工作台新建')
                     p=create_project(data['company'],data.get('code',''),data.get('profile','general'),kit=root)
                     self.send({'project':p.name});return
-                p=self.project(data['project']);store=ReviewStore(p)
+                if action=='/api/link':
+                    self.send({'project':link_project(root,data['path'],data.get('label',''))});return
+                selected=data['project'];p=self.project(selected);entry=inventory(root)[selected]
+                if action=='/api/report':
+                    self.send(generate_report(root,entry,selected_state(entry,selected)));return
+                if action=='/api/legacy-review':
+                    if entry['mode']!='legacy':raise WorkbenchError('该项目使用网页核验')
+                    if not data.get('open'):raise WorkbenchError('需要本人点击打开原核验窗口')
+                    script=p/'scripts/review_ui.py'
+                    if not script.is_file():raise WorkbenchError('原核验窗口脚本缺失')
+                    executable=Path(sys.executable).with_name('pythonw.exe')
+                    subprocess.Popen([str(executable if executable.is_file() else sys.executable),str(script)],cwd=p,
+                                     creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+                    self.send({'ok':True,'note':'原核验窗口已启动；网页不代替本人确认'});return
+                if entry['mode']=='legacy':raise WorkbenchError('旧工作空间由原核验系统维护；请在原窗口确认，不在此重写事实或签署')
+                store=ReviewStore(p)
                 if action=='/api/import':
                     if data.get('folder'):added=import_sources(p,data['folder'])
                     else:
@@ -134,7 +166,16 @@ def make_server(root=ROOT,port=0):
                             target.write_bytes(content)
                         added=import_sources(p,folder)
                     self.send({'added':len(added)});return
-                if action=='/api/confirm':store.confirm(data['id'],'human-ui',expected_binding=data['binding'])
+                if action=='/api/record':store.upsert(data['record'])
+                elif action=='/api/draft':self.send(save_draft(p,data));return
+                elif action=='/api/contracts':self.send(save_contracts(p,data));return
+                elif action=='/api/model':self.send(scenario(p,data));return
+                elif action=='/api/signature':self.send(record_signature(p,data));return
+                elif action=='/api/classify':store.classify_source(data['source_id'],data['role'],data.get('purpose',''))
+                elif action=='/api/index':
+                    from .core import index_sources
+                    self.send(index_sources(p));return
+                elif action=='/api/confirm':store.confirm(data['id'],'human-ui',expected_binding=data['binding'])
                 elif action=='/api/unknown':store.withdraw(data['id'],data.get('reason','用户选择保留Unknown，未确认原值'))
                 elif action=='/api/delegate':
                     scope='用户在本项目窗口点击授权：允许Agent核准本公司项目当前及后续原始披露与计算，需核原文、口径、算术和支持边界，不伪造本人点击或签名。'

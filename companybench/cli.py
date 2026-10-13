@@ -25,6 +25,10 @@ def main(argv=None):
     p=sub.add_parser('new',help='创建独立公司项目');p.add_argument('--company',required=True);p.add_argument('--code',default='');p.add_argument('--profile',choices=['general','consumer','industrial','financial'],default='general');p.add_argument('--path',type=Path)
     sub.add_parser('doctor',help='检查Python、Git及可选PDF工具')
     p=sub.add_parser('series-audit',help='只读检查附件CSV，不确认Fact');p.add_argument('--source',type=Path,required=True);p.add_argument('--cutoff');p.add_argument('--output',type=Path)
+    p=sub.add_parser('link',help='连接已有项目，不迁移事实账本');p.add_argument('--root',type=Path,default=ROOT);p.add_argument('--directory',type=Path,required=True);p.add_argument('--name',default='')
+    for name in ('draft','model','report'):
+        p=sub.add_parser(name,help={'draft':'保存结构化研究草稿','model':'以明确假设计算FCFF情景','report':'生成版本化报告与依据快照'}[name]);p.add_argument('--project',type=Path,default=ROOT)
+        if name!='report':p.add_argument('--file',type=Path,required=True)
     for name,description in [('import','归档原件并解包ZIP'),('index','生成只用于检索的文字缓存'),('candidate','新增或修订候选'),('status','查看当前来源绑定状态'),('validate','核查来源、历史与有效状态'),('confirm','记录实际聊天确认或授权Agent核准'),('withdraw','撤回为Unknown'),('delegate','登记用户明确代理授权'),('revoke','撤销代理授权'),('review-ready','将报告标为可审阅'),('approve','登记报告内容确认'),('handoff','更新精简当前交接'),('classify','按正文标注资料用途'),('git-init','明确创建本项目独立Git'),('git-status','查看本项目Git状态'),('git-save','保存中文本地提交，不推送')]:
         p=sub.add_parser(name,help=description);p.add_argument('--project',type=Path,default=ROOT)
         if name=='import':p.add_argument('--source',type=Path,required=True)
@@ -46,6 +50,17 @@ def main(argv=None):
         if command=='new':
             if not (ROOT/'templates').exists() or (ROOT/'project.json').exists():raise WorkbenchError('请从通用工作台主目录新建公司项目')
             result={'project':str(create_project(args.company,args.code,args.profile,args.path))}
+        elif command=='link':
+            from .workspace import link_project
+            result={'project':link_project(args.root,args.directory,args.name)}
+        elif command in ('draft','model','report'):
+            from .workflow import save_draft,scenario,generate_report
+            from .workspace import selected_state
+            if command=='draft':result=save_draft(args.project,read_json(args.file))
+            elif command=='model':result=scenario(args.project,read_json(args.file))
+            else:
+                entry={'mode':'generic','path':args.project.resolve()}
+                result=generate_report(ROOT,entry,selected_state(entry,args.project.name))
         elif command=='series-audit':
             from .series import profile_series
             result=profile_series(args.source,args.cutoff)
