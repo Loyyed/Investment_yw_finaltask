@@ -60,4 +60,6 @@ def selected_state(entry,key):
                    'research':research_summary(p,records),'draft':read_json(p/'work/report-draft.json',{}),
                    'models':read_json(p/'work/model-scenarios.json',{'scenarios':[]})['scenarios'],
                    'prompt':f'请读取 {p.as_posix()}/AGENTS.md 和会话交接/CURRENT.md，使用本项目当前ReviewStore核验有效事实与来源。按实际合同执行，记录年度重大变化、修正和Unknown，完成经营、财务、行业、情景及报告。先保留可复查底稿，最终意见由我确认。'})
+    from .methods import plan_view
+    result["research_plan"]=plan_view(p,records)
     return result

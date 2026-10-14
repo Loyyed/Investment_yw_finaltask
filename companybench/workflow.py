@@ -151,6 +151,9 @@ def report_text(state):
             lines+=['### '+c['name'],'']
             for r in c.get('clauses',[]):lines+=['- '+cell(r.get('id',''))+' '+cell(r.get('requirement',''))+'；'+cell(r.get('status','待完成'))+'；依据 '+cell(r.get('evidence',[]))]
             lines+=['']
+    if state.get('research_plan'):
+        from .methods import plan_report
+        lines+=['',plan_report(state['research_plan'])]
     lines+=['','## 内容审阅与签署','',
            '本版汇编不新增人工确认、不继承历史签名。原事实的核准身份、时间和原授权保持不变；内容审阅与执行／复核签署分别记录。','']
     return '\n'.join(lines)

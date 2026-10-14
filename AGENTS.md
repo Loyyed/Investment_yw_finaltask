@@ -11,3 +11,5 @@
 - 本工具包没有自动发布权限。Git与外部发布按本次用户实际指令执行；独立公司项目不能误用父目录仓库，推送前确认远程与当前文件范围。
 
 - v2全流程见docs/2026-10-13-全流程工作台.md；报告按当前草稿、记录、情景和合同汇编，Unknown不补数。旧工作空间用原ReviewStore读取，原窗口核验；不迁移核准、签署或actor。
+
+- 2026-10-14方法接力：按当前问题加载本项目skills/annual-report-evidence-chain与skills/business-model-evidence；work/research-plan.json为非权威研究计划，实时引用当前有效Fact，不能替代核验、内容采纳或签署。只用当前公司合同/材料/授权，不继承建设案例；事后跟踪与历史可获信息集分开。

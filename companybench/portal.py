@@ -152,6 +152,9 @@ def make_server(root=ROOT,port=0):
                     subprocess.Popen([str(executable if executable.is_file() else sys.executable),str(script)],cwd=p,
                                      creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
                     self.send({'ok':True,'note':'原核验窗口已启动；网页不代替本人确认'});return
+                if action=='/api/research-plan':
+                    from .methods import save_plan
+                    self.send(save_plan(p,data['plan'],selected_state(entry,selected)['records']));return
                 if entry['mode']=='legacy':raise WorkbenchError('旧工作空间由原核验系统维护；请在原窗口确认，不在此重写事实或签署')
                 store=ReviewStore(p)
                 if action=='/api/import':

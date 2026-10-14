@@ -29,6 +29,12 @@ description: 建立或继续基于原始年报和任务材料的公司分析，�
 | 命令、报告、验收、Git和会话交接 | [operations-and-reporting.md](references/operations-and-reporting.md) |
 | 有课程合同、披露地图、研究卡或工具组件要求 | [course-and-tool-adapters.md](references/course-and-tool-adapters.md) |
 
+## 新附件方法接力
+
+- 原值提取、指标迁移与比较：按需读[年报证据链](../annual-report-evidence-chain/SKILL.md)。
+- 财务四环、两层商业模式与指标参数补证：按需读[商业模式证据](../business-model-evidence/SKILL.md)。
+- 前端“方法与补证”保存当前项目研究计划，依据实时绑定；计划与观点不形成第二套Fact账本。新公司只带方法，不带茅台数据。
+
 ## 必须保留的分析与核准关系
 
 1. 原件、版本、期间、单位、主体、合并范围和具体表行列共同定义一条证据。解包及乱码名称按正文识别；检索缓存和文件名不能证明内容。
