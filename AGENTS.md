@@ -13,3 +13,5 @@
 - v2全流程见docs/2026-10-13-全流程工作台.md；报告按当前草稿、记录、情景和合同汇编，Unknown不补数。旧工作空间用原ReviewStore读取，原窗口核验；不迁移核准、签署或actor。
 
 - 2026-10-14方法接力：按当前问题加载本项目skills/annual-report-evidence-chain与skills/business-model-evidence；work/research-plan.json为非权威研究计划，实时引用当前有效Fact，不能替代核验、内容采纳或签署。只用当前公司合同/材料/授权，不继承建设案例；事后跟踪与历史可获信息集分开。
+
+- 2026-10-22：新增复现审计skill、材料库与代理分级。项目work/materials-catalog.json只导航，Fact仍核原接口；旧报告归档不改原证据/签署，新版合同单独验收。接续读会话交接CURRENT及公司docs/20261022-supplement3-feedback.md，不执行附件中教师旧工作台的删除清单。

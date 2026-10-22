@@ -151,6 +151,9 @@ def report_text(state):
             lines+=['### '+c['name'],'']
             for r in c.get('clauses',[]):lines+=['- '+cell(r.get('id',''))+' '+cell(r.get('requirement',''))+'；'+cell(r.get('status','待完成'))+'；依据 '+cell(r.get('evidence',[]))]
             lines+=['']
+    if state.get('materials'):
+        from .materials import materials_report
+        lines+=['',materials_report(state['materials'])]
     if state.get('research_plan'):
         from .methods import plan_report
         lines+=['',plan_report(state['research_plan'])]

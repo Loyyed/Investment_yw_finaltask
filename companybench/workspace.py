@@ -62,4 +62,6 @@ def selected_state(entry,key):
                    'prompt':f'请读取 {p.as_posix()}/AGENTS.md 和会话交接/CURRENT.md，使用本项目当前ReviewStore核验有效事实与来源。按实际合同执行，记录年度重大变化、修正和Unknown，完成经营、财务、行业、情景及报告。先保留可复查底稿，最终意见由我确认。'})
     from .methods import plan_view
     result["research_plan"]=plan_view(p,records)
+    from .materials import material_view
+    result["materials"]=material_view(p)
     return result
