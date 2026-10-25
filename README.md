@@ -66,3 +66,6 @@ python scripts/check_bundle.py
 本仓库为Investment_yw_finaltask。具体公司成果、合同执行与人工待办在[Investment_yw_10-1_begin](https://github.com/Loyyed/Investment_yw_10-1_begin)；用户指定的补充原件及完整逐行输入保留本地，不随成果上传。GitHub仓库设置中的简介字段与README为两项独立操作，不把README推送冒充设置字段修改。
 
 本轮67项隔离测试、浏览器完整操作及桌面／窄屏检查通过。原核验核心core.py字节保持，保留旧计算指纹。简化FCFF模型适用正FCFF；金融、负FCFF、复杂证券权利和详细分段预测仍需按材料适配，不自动出投资决定。
+
+
+研究图册支持逐合同判断、机制图解与条件预测。使用方法见[从核验到研究图册](docs/2026-10-25-从核验到研究图册.md)，方法见[研究预测skill](skills/investment-insight-forecast/SKILL.md)。公司数据与参数不进入通用工具库。

@@ -62,3 +62,6 @@
 - GitHub About简介字段仍未通过设置接口修改（当前无接口/gh）；两仓库中文稿已备公司docs/github-about-zh.md，文件成果推送与About设置分开，列最终收束待办。
 
 - 报告核验数量按原披露与各独立域分别列示，关联/重叠不合计独立Fact；相应合成检查已覆盖。
+
+
+- 2026-10-25当前优先：用户要求由核验罗列升级为有研究判断、机制、图解和预测的报告。新增skills/investment-insight-forecast，companybench/insight.py与离线SVG/参数渲染；报告页优先图册，GET /api/insight实时校验本公司权威域和源/计算SHA，旧依据汇编保留。公司数据仅在公司空间，核心core.py及旧认可账本不改。使用见docs/2026-10-25-从核验到研究图册.md。新观点不继承旧人审/签名，未来参数保持Forecast，不再新建同类P05反复确认。

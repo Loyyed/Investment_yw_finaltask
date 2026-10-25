@@ -53,12 +53,16 @@ def make_server(root=ROOT,port=0):
     root=Path(root).resolve();token=secrets.token_hex(24)
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,format,*args):pass
-        def send(self,data,status=200,content='application/json; charset=utf-8',disposition=None):
+        def send(self,data,status=200,content='application/json; charset=utf-8',disposition=None,interactive=False):
             if isinstance(data,(dict,list)):data=json.dumps(data,ensure_ascii=False).encode('utf-8')
             elif isinstance(data,str):data=data.encode('utf-8')
             self.send_response(status);self.send_header('Content-Type',content);self.send_header('Content-Length',str(len(data)))
             self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff')
-            self.send_header('Content-Security-Policy',"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'nonce-"+token+"'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'" if self.path.split('?')[0]=='/' else "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; sandbox allow-popups allow-top-navigation-by-user-activation")
+            if interactive:
+                policy="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-"+token+"'; connect-src 'none'; img-src 'self' data:; form-action 'none'; frame-ancestors 'none'; sandbox allow-scripts allow-popups allow-top-navigation-by-user-activation"
+                self.send_header('Content-Security-Policy',policy)
+            else:
+                self.send_header('Content-Security-Policy',"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'nonce-"+token+"'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'" if self.path.split('?')[0]=='/' else "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; sandbox allow-popups allow-top-navigation-by-user-activation")
             if disposition:self.send_header('Content-Disposition',disposition)
             self.end_headers();self.wfile.write(data)
         def host_ok(self):
@@ -88,6 +92,13 @@ def make_server(root=ROOT,port=0):
                         value['selected']['report_stale']=bool(latest and latest['fingerprint']!=report_fingerprint(value['selected']))
                         for m in value['selected']['models']:m['current']=model_current(m,value['selected']['records'])
                     self.send(value);return
+                if route.path=='/api/insight':
+                    from .insight import read_spec,validate_current,render
+                    selected=query.get('project',[''])[0];p=self.project(selected);entry=inventory(root)[selected]
+                    spec=read_spec(p);validate_current(p,spec,entry['mode'])
+                    chapter=query.get('chapter',[None])[0]
+                    source_url=lambda path:'/file?'+urlencode({'project':selected,'path':path})
+                    self.send(render(spec,chapter,nonce=token,source_url=source_url),content='text/html; charset=utf-8',interactive=True);return
                 if route.path=='/api/export':
                     selected=query.get('project',[''])[0];self.project(selected)
                     report=read_json(root/'runtime/latest-reports'/f'{selected}.json',None)

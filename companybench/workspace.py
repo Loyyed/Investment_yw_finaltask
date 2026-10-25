@@ -54,6 +54,7 @@ def selected_state(entry,key):
         for source in result['sources']:
             try:source['intact']=sha(contained(p,source['path']))==source['sha256']
             except OSError:source['intact']=False
+    result['research_atlas']=(p/'work/research-atlas-current.json').is_file()
     result.update({'id':key,'mode':entry['mode'],'path':str(p),'settings':settings,
                    'next_review_id':read_json(p/'work/workbench-ui-navigation.json',{}).get('next_review_id',''),
                    'counts':{'Fact':sum(r['effective_state']=='Fact' for r in records),'Unknown':sum(r['effective_state']=='Unknown' for r in records),'total':len(records)},
