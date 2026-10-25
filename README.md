@@ -72,3 +72,6 @@ python scripts/check_bundle.py
 
 
 图册现支持经营过程卡、跨章接续和独立叙事专题。可复用方法见[故事融合与专题](docs/2026-10-25-故事融合与专题.md)；具体公司故事、案例数字和授权由该公司项目维护。
+
+
+图形样式可复用：细线、阶梯、哑铃、构成条带、垂线散点等9种编码，支持重播、原值批注与离线图鉴。方法见[图形复刻与迁移](skills/investment-insight-forecast/references/visual-replication.md)。公司自己提供已绑定的数据与visual配置，通用工具不携带案例数字。

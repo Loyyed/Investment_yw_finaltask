@@ -1,7 +1,8 @@
 """Evidence-bound analytical HTML. No review writes, network or company defaults."""
 from pathlib import Path
 from decimal import Decimal, localcontext
-import argparse, hashlib, html, json, math, re, sys, subprocess, copy
+import argparse, hashlib, html, json, math, re, sys, subprocess, copy, importlib.util
+from functools import lru_cache
 
 SPEC_PATH = 'work/research-atlas-current.json'
 
@@ -69,8 +70,31 @@ def forecast(model, scenario, overrides=None):
 def e(v):return html.escape(str(v),quote=True)
 def number(v,p=2):return f'{float(v):,.{p}f}'
 
+@lru_cache(maxsize=1)
+def visual_module():
+    source=Path(__file__).with_name('visual_charts.py')
+    module_spec=importlib.util.spec_from_file_location('workbench_visual_charts',source)
+    module=importlib.util.module_from_spec(module_spec);module_spec.loader.exec_module(module)
+    return module
+
+def apply_chart_designs(spec, designs):
+    result=copy.deepcopy(spec);by_id={c['id']:c for c in result['chapters']}
+    for id,charts in designs.get('new_charts',{}).items():
+        if id not in by_id:raise ValueError('图形接续章节不存在：'+id)
+        existing={x['title']:x for x in by_id[id].get('charts',[])}
+        for chart in charts:
+            if chart['title'] in existing:
+                old=existing[chart['title']]
+                if any(old.get(k)!=chart.get(k) for k in ('rows','series','unit')):raise ValueError('图形样式不得覆盖既有数据：'+chart['title'])
+            else:by_id[id].setdefault('charts',[]).append(copy.deepcopy(chart))
+    for c in result['chapters']:
+        for chart in c.get('charts',[]):
+            if chart['title'] in designs['designs']:chart['visual']=copy.deepcopy(designs['designs'][chart['title']])
+    return result
+
 def chart_svg(chart):
     """Zero-based bars; full percentage scale for margins; explicit missing gaps."""
+    if chart.get('visual'):return visual_module().render_visual(chart)
     kind=chart.get('kind','line');rows=chart['rows'];series=chart['series'];w,h=760,300;left,right,top,bottom=72,26,28,58;pw,ph=w-left-right,h-top-bottom
     colors=['#167d8d','#d69545','#63748d','#7bb6a5'];vals=[float(r[s['key']]) for r in rows for s in series if r.get(s['key']) is not None]
     if not vals:return '<p>当前缺少可绘制输入。</p>'
@@ -163,11 +187,23 @@ def render(spec, chapter=None, nonce='', source_url=None):
             b.append('<div class="chart-grid">')
             for ch in c['charts']:
                 legend='<div class="chart-legend">'+''.join('<span><i style="background:'+['#167d8d','#d69545','#63748d','#7bb6a5'][j%4]+'"></i>'+e(item['label'])+'</span>' for j,item in enumerate(ch['series']))+'</div>'
-                b.append('<figure><figcaption><span class="eyebrow">'+e(ch.get('tag','计算 · AgentCalculated'))+'</span><h3>'+e(ch['title'])+'</h3><p>'+e(ch['subtitle'])+'</p></figcaption>'+legend+'<div class="chart-unit">'+e(ch['unit'])+'</div>'+chart_svg(ch)+'<p class="chart-reading">'+e(ch['reading'])+'</p>'+refs(ch['refs']))
+                visual=ch.get('visual')
+                if visual:
+                    if visual.get('template')=='dumbbell':
+                        labels=[str(r['label']) for r in ch['rows']] if visual.get('pair_mode')=='rows' else [r['label'] for r in ch['series']]
+                        legend='<div class="chart-legend"><span><i class="vis-key hollow"></i>空心：'+e(labels[0])+'</span><span><i class="vis-key solid"></i>实心：'+e(labels[1])+'</span></div>'
+                    else:
+                        items=visual.get('legend_items') or [{'label':item['label'],'color':visual_module().COLORS[j%4]} for j,item in enumerate(ch['series'])]
+                        legend='<div class="chart-legend">'+''.join('<span><i style="background:'+e(item['color'])+'"></i>'+e(item['label'])+'</span>' for item in items)+'</div>'
+                figure_class='figure-replica'+(' figure-wide' if visual and visual.get('full_width') else '') if visual else ''
+                controls=('<div class="chart-tools"><span>'+e(visual_module().NAMES[visual['template']])+'</span><button type="button" data-chart-replay>↻ 重播绘制</button></div>') if visual else ''
+                b.append('<figure class="'+figure_class+'"><figcaption><span class="eyebrow">'+e(ch.get('tag','计算 · AgentCalculated'))+'</span><h3>'+e(ch['title'])+'</h3><p>'+e(ch['subtitle'])+'</p></figcaption>'+legend+controls+'<div class="chart-unit">'+e(ch['unit'])+'</div>'+'<div class="chart-canvas" tabindex="0" role="region" aria-label="'+e(ch['title'])+'">'+chart_svg(ch)+'</div>'+('<p class="chart-pan-hint">窄屏可横向滑动图形，查看完整刻度与标签。</p>' if visual else '')+'<p class="chart-reading">'+e(ch['reading'])+'</p>'+refs(ch['refs']))
                 hdr=['期间／类别']+[x['label']+'（'+ch['unit']+'）' for x in ch['series']]
                 vals=[[r['label']]+['Unknown' if r.get(s['key']) is None else number(r[s['key']],ch.get('precision',2)) for s in ch['series']] for r in ch['rows']]
                 b.append(analysis_details(ch.get('analysis')))
-                b.append('<details><summary>查看数据与计算口径</summary><p>'+e(ch.get('formula','原披露或匹配范围派生，输入详见来源批注。'))+'</p>'+table(hdr,vals)+'</details></figure>')
+                b.append('<details><summary>查看数据与计算口径</summary><p>'+e(ch.get('formula','原披露或匹配范围派生，输入详见来源批注。'))+'</p>'+table(hdr,vals)+'</details>')
+                if visual:b.append('<details class="visual-note"><summary>图型与视觉编码</summary><p>'+e(visual['note'])+'</p><p>图型参考：'+e(visual.get('reference',{}).get('file','本项目图形设计'))+'。按当前项目数据重新绘制，原件留本地；图形复刻不迁移参考事实身份。</p></details>')
+                b.append('</figure>')
             b.append('</div>')
         if c.get('matrix'):b.append(table(c['matrix']['headers'],c['matrix']['rows'])+analysis_details(c['matrix'].get('analysis'),'表格分析：含义、用途与推断'))
         if c.get('forecast'):
@@ -193,6 +229,23 @@ def render(spec, chapter=None, nonce='', source_url=None):
 
     return page.replace('RESEARCH ATLAS / 600519','RESEARCH ATLAS / '+e(spec.get('security_code',''))).replace('SECURITIES RESEARCH / 贵州茅台','SECURITIES RESEARCH / '+e(spec['company'])).replace('2026.10.25',e(spec['date'])).replace('2026-10-25',e(spec['date']))
 
+def render_visual_gallery(spec, source_url=None, report_link='../证券投资分析研究图册.html'):
+    charts=[x for c in spec['chapters'] for x in c.get('charts',[]) if x.get('visual')]
+    order=['ribbon','dumbbell','paired','hairline','rungs','plumb','composition','stem','waterfall'];selected=[]
+    for template in order:
+        candidates=[x for x in charts if x['visual']['template']==template]
+        if not candidates:continue
+        if template in ('ribbon','paired'):chosen=max(enumerate(candidates),key=lambda pair:(len(pair[1]['rows']),pair[0]))[1]
+        elif template=='dumbbell':chosen=max(candidates,key=lambda x:(x['visual'].get('pair_mode')!='rows',len(x['rows'])))
+        elif template=='rungs':chosen=max(candidates,key=lambda x:len(x['rows']))
+        else:chosen=candidates[0]
+        selected.append(copy.deepcopy(chosen))
+    if not selected:raise ValueError('当前项目尚无复刻图型，先指定图形编码')
+    gallery=copy.deepcopy(spec);gallery['title']=spec['company']+'：青瓷蓝图形复刻样例';gallery['subtitle']='以当前已绑定数据重新实现细线、阶梯、哑铃、构成条带与垂线散点。每幅图保留分析、数据和编码说明，支持重播绘制。'
+    gallery['chapters']=[{'id':'visual-gallery','number':'图','nav':'图型样例','kicker':'视觉样例 / 当前项目数据','title':'先看图，再回到研究','question':'哪种图型更容易看清同一份数据？','thesis':'图型为研究问题服务：年度关系、构成、成对差异和机制诊断分别选择合适编码。复刻配色与细线语言，保留精确输入、定义断点和未知边界。','refs':[],'blocks':[],'charts':selected,'alternative':['美观与适配分别判断','需要精确查数时，展开数据表和来源；图型不能改变口径。'],'falsifier':['编码若改变含义就应重选','不跨缺失或定义断点假画连续关系，不让阶梯取整替代数值。'],'next':'返回完整报告可按合同及专题阅读，本页仅汇集图形样式。'}]
+    page=render(gallery,'visual-gallery',source_url=source_url)
+    return page.replace('<div class="toolbar">','<div class="toolbar"><a href="'+e(report_link)+'">返回完整研究 ↗</a>',1)
+
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('project');ap.add_argument('--spec',default=SPEC_PATH);ap.add_argument('--output',default='outputs/证券投资分析研究图册.html');ap.add_argument('--mode',default='legacy',choices=['legacy','standard']);args=ap.parse_args()
     p=Path(args.project).resolve();spec=read_spec(p,args.spec);check=validate_current(p,spec,args.mode)
@@ -201,5 +254,6 @@ def main():
     out.parent.mkdir(parents=True,exist_ok=True);out.write_text(render(spec,source_url=lambda x:'../'+x),encoding='utf-8')
     directory=out.parent/'research-atlas';directory.mkdir(exist_ok=True)
     for c in spec['chapters']:(directory/(c['id']+'.html')).write_text(render(spec,c['id'],source_url=lambda x:'../../'+x),encoding='utf-8')
+    if any(ch.get('visual') for c in spec['chapters'] for ch in c.get('charts',[])):(directory/'visual-gallery.html').write_text(render_visual_gallery(spec,source_url=lambda x:'../../'+x,report_link='../'+out.name),encoding='utf-8')
     print(json.dumps({'output':str(out),'pages':len(spec['chapters'])+1,**check},ensure_ascii=False))
 if __name__=='__main__':main()

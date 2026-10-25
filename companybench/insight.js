@@ -41,3 +41,6 @@ document.getElementById('guide-toggle').addEventListener('click',e=>{const show=
 document.getElementById('print-report').addEventListener('click',()=>window.print());
 if('IntersectionObserver' in window){const io=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting){document.querySelectorAll('.rail nav a').forEach(a=>a.classList.toggle('active',a.hash==='#'+e.target.id));}},{rootMargin:'-5% 0px -65% 0px'});document.querySelectorAll('.chapter').forEach(e=>io.observe(e));}
 reset();
+
+document.addEventListener('click',event=>{const button=event.target.closest('[data-chart-replay]');if(!button)return;const svg=button.closest('figure').querySelector('.vis-svg');if(svg){const clone=svg.cloneNode(true);clone.classList.add('vis-animate');svg.replaceWith(clone);}});
+if('IntersectionObserver' in window){const chartObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){entry.target.classList.add('vis-animate');chartObserver.unobserve(entry.target);}},{threshold:.15});document.querySelectorAll('.vis-svg').forEach(svg=>chartObserver.observe(svg));}
