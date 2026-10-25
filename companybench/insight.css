@@ -2,3 +2,5 @@
 :where(p,td,small){overflow-wrap:anywhere}
 
 .chart-legend{display:flex;gap:8px 18px;flex-wrap:wrap;font-size:11px;margin:15px 0 0;color:#526c6f}.chart-legend span{display:flex;align-items:center;gap:7px}.chart-legend i{display:inline-block;width:14px;height:4px;border-radius:2px}
+
+.chart-analysis{border:1px solid #d9e4df;border-radius:8px;padding:6px 14px;background:#f6f9f5}.chart-analysis summary{font-weight:600}.chart-analysis dl{margin:12px 0}.chart-analysis dt{font-size:12px;font-weight:700;color:#167d8d;margin-top:12px}.chart-analysis dd{margin:4px 0 10px;font-size:13px;line-height:1.85;overflow-wrap:anywhere}@media print{.chart-analysis[open]{break-inside:avoid}}

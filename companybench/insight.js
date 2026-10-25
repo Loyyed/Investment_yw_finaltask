@@ -10,6 +10,8 @@ function calculate(key,overrides={}){
 window.atlasCalculate=calculate;
 function redraw(){
  const host=document.getElementById('forecast-output');if(!host)return;
+ const openPanels=new Set([...host.querySelectorAll('details[data-analysis][open]')].map(x=>x.dataset.analysis));
+ const panel=(id,title,meaning,use,inference)=>`<details class="chart-analysis" data-analysis="${id}" ${openPanels.has(id)?'open':''}><summary>${title}</summary><dl><dt>图表含义</dt><dd>${meaning}</dd><dt>研究用途</dt><dd>${use}</dd><dt>分析与推断</dt><dd>${inference}</dd></dl></details>`;
  const q=+document.getElementById('q-input').value/100,p=+document.getElementById('p-input').value/100,s=+document.getElementById('s-input').value/100;
  document.getElementById('q-label').textContent=fmt(q*100,1)+'%';document.getElementById('p-label').textContent=fmt(p*100,1)+'%';document.getElementById('s-label').textContent=fmt(s*100,1)+'%';
  const rows=calculate(scenario,{mt_q:q,mt_p:p,selling_rate:s}),scenarios=Object.keys(model.scenarios).map(k=>({key:k,rows:calculate(k)}));
@@ -19,7 +21,17 @@ function redraw(){
  scenarios.forEach((sc,j)=>{const values=[+model.baseline.company_revenue,...sc.rows.map(r=>r.revenue)];svg+=`<polyline points="${values.map((v,i)=>xx(i)+','+yy(v)).join(' ')}" fill="none" stroke="${['#b59c78','#94aaa8','#b0bfca'][j]}" stroke-width="2" stroke-dasharray="5 5"/>`;});
  const values=[+model.baseline.company_revenue,...rows.map(r=>r.revenue)];svg+=`<polyline points="${values.map((v,i)=>xx(i)+','+yy(v)).join(' ')}" fill="none" stroke="#167d8d" stroke-width="4"/>`;values.forEach((v,i)=>{svg+=`<circle cx="${xx(i)}" cy="${yy(v)}" r="5" fill="#167d8d"/><text x="${xx(i)}" y="${yy(v)-12}" text-anchor="middle" class="value">${fmt(v/1e8,0)}</text><text x="${xx(i)}" y="250" text-anchor="middle" class="tick">${i?model.years[i-1]:model.baseline.year}${i?'预测':'实际'}</text>`;});svg+='</svg>';
  const grow=rows[0].revenue/(+model.baseline.company_revenue)-1;
- host.innerHTML=`<div class="forecast-card"><div class="metric-strip"><span>${model.years[0]} 营业收入<strong>${fmt(rows[0].revenue/1e8,1)} 亿</strong></span><span>较${model.baseline.year}变化<strong>${fmt(grow*100,1)}%</strong></span><span>${model.years[0]} 条件净利润桥接<strong>${fmt(rows[0].net_profit_bridge/1e8,1)} 亿</strong></span></div>${svg}<p>实线为所选情景及当前滑块；三条虚线分别为压力、基准、修复原参数路径。纵轴从零开始；这些路径不代表统计置信区间。</p></div><div class="table-wrap"><table><thead><tr><th>年份</th><th>营业收入 / 亿</th><th>核心产品销量 / 吨</th><th>组合ASP / 万元每吨</th><th>酒类毛利率</th><th>条件净利润 / 亿</th><th>合并CFO敏感性 / 亿</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.year}预测</td><td>${fmt(r.revenue/1e8)}</td><td>${fmt(r.mt_volume,0)}</td><td>${fmt(r.mt_asp/1e4)}</td><td>${fmt(r.gross_margin*100)}%</td><td>${fmt(r.net_profit_bridge/1e8)}</td><td>${fmt(r.consolidated_cfo_sensitivity/1e8)}</td></tr>`).join('')}</tbody></table></div><p class="scenario-note">净利润为以${model.baseline.year}合并结果锚定的条件桥接，金融及未建模项维持基期；CFO仅套设定转换比率，金融资金变化未独立预测。两者均非实体NOPAT、FCFF或可分配现金。</p>`;
+ const profitGrow=rows[0].net_profit_bridge/(+model.baseline.net_profit)-1,productGrow=(1+q)*(1+p)-1;
+ const pathAnalysis=panel('forecast-path','图表分析：收入路径的含义、用途与推断',
+ `当前假设下，${model.years[0]}营业收入为${fmt(rows[0].revenue/1e8,1)}亿元，较基期变化${fmt(grow*100,1)}%；${model.years.at(-1)}为${fmt(rows.at(-1).revenue/1e8,1)}亿元。实线随当前参数变化，虚线保留三种原参数路径。`,
+ '比较量价变化如何改变未来收入水平，检查需要怎样的恢复条件，而不是把某条曲线当确定结果。',
+ `首年核心产品销量与组合ASP合成变化为${fmt(productGrow*100,1)}%。${grow<0?'当前公司收入低于基期，量增和其他产品贡献尚不足以抵消价格等模型条件的拖累。':'当前公司收入高于基期，但这一增长依赖所设量价条件兑现。'}后续年份还沿用所选情景参数；路径之间的距离不代表概率或置信区间。`);
+ const tableAnalysis=panel('forecast-table','表格分析：利润与现金敏感性的含义、用途与推断',
+ `${model.years[0]}条件净利润桥接为${fmt(rows[0].net_profit_bridge/1e8,1)}亿元，较基期变化${fmt(profitGrow*100,1)}%；合并CFO敏感性为${fmt(rows[0].consolidated_cfo_sensitivity/1e8,1)}亿元。表内同时展示核心产品量价、酒类毛利率及三年结果。`,
+ '检查收入路径是否同时留住利润，以及在设定现金转换率下会产生怎样的现金结果；可配合费用率滑块辨认利润对销售代价的敏感度。',
+ `${profitGrow<grow?'当前条件利润变化弱于收入变化，提示毛利与费用等设定可能吸收收入贡献。':'当前条件利润变化强于或等于收入变化，提示模型内毛利与费用等条件对利润有相对帮助。'}这是以基期合并结果和增量保留率建立的条件桥，未建模金融及其他损益仍取基期；CFO只按设定比率计算，不能据此认定实体FCFF或可分配现金。`);
+
+ host.innerHTML=`<div class="forecast-card"><div class="metric-strip"><span>${model.years[0]} 营业收入<strong>${fmt(rows[0].revenue/1e8,1)} 亿</strong></span><span>较${model.baseline.year}变化<strong>${fmt(grow*100,1)}%</strong></span><span>${model.years[0]} 条件净利润桥接<strong>${fmt(rows[0].net_profit_bridge/1e8,1)} 亿</strong></span></div>${svg}<p>实线为所选情景及当前滑块；三条虚线分别为压力、基准、修复原参数路径。纵轴从零开始；这些路径不代表统计置信区间。</p>${pathAnalysis}</div><div class="table-wrap"><table><thead><tr><th>年份</th><th>营业收入 / 亿</th><th>核心产品销量 / 吨</th><th>组合ASP / 万元每吨</th><th>酒类毛利率</th><th>条件净利润 / 亿</th><th>合并CFO敏感性 / 亿</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.year}预测</td><td>${fmt(r.revenue/1e8)}</td><td>${fmt(r.mt_volume,0)}</td><td>${fmt(r.mt_asp/1e4)}</td><td>${fmt(r.gross_margin*100)}%</td><td>${fmt(r.net_profit_bridge/1e8)}</td><td>${fmt(r.consolidated_cfo_sensitivity/1e8)}</td></tr>`).join('')}</tbody></table></div>${tableAnalysis}<p class="scenario-note">净利润为以${model.baseline.year}合并结果锚定的条件桥接，金融及未建模项维持基期；CFO仅套设定转换比率，金融资金变化未独立预测。两者均非实体NOPAT、FCFF或可分配现金。</p>`;
 }
 function reset(){const s=model.scenarios[scenario];for(const [id,k] of [['q-input','mt_q'],['p-input','mt_p'],['s-input','selling_rate']]){const el=document.getElementById(id);if(el)el.value=s[k][0]*100;}redraw();}
 document.querySelectorAll('[data-scenario]').forEach(b=>b.addEventListener('click',()=>{scenario=b.dataset.scenario;document.querySelectorAll('[data-scenario]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));reset();}));
