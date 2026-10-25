@@ -64,17 +64,23 @@ def snapshot(path):
     documents=[]
     for relative in ('outputs/lec03-final-results.md','outputs/channel-expense-capital-analysis.md','outputs/task06-industry-advantage.md',
                      'outputs/task05-business-model-map.md','work/20261012-supplement/conflict-register.md','docs/20261012-next-task-checklist.md',
-                     'docs/task-status.md','work/yearly-changes.md'):
+                     'docs/task-status.md','work/yearly-changes.md','work/task07-narrative-audit.md',
+                     'outputs/lec03-evidence-matrix.md','outputs/lec03-stage-deliverables.md','docs/20261025-final-delivery-checklist.md','docs/github-about-zh.md'):
         p=root/relative
         if p.is_file():documents.append({'path':relative,'title':p.stem,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
     adoption=root/'evidence/20261013-research-opinion-adoption.json'
     sections={}
     for key,relative in [('business','outputs/task05-business-model-map.md'),('financial','outputs/channel-expense-capital-analysis.md'),
-                         ('industry','outputs/task06-industry-advantage.md'),('narrative','outputs/lec03-final-results.md')]:
+                         ('industry','outputs/task06-industry-advantage.md'),('narrative','work/task07-narrative-audit.md' if (root/'work/task07-narrative-audit.md').is_file() else 'outputs/lec03-final-results.md')]:
         file=root/relative
         if file.is_file():sections[key]={'path':relative,'content':file.read_text(encoding='utf-8-sig'),'sha256':hashlib.sha256(file.read_bytes()).hexdigest()}
+    try:
+        from .review_status import current_reviews
+    except ImportError:
+        from review_status import current_reviews
+    reviews=current_reviews(root)
     return {'records':rows,'sources':sources,'domains':domains,'contracts':contracts,'documents':documents,
-            'research_sections':sections,
+            'research_sections':sections,'content_reviews':reviews,
             'opinion_adoption':json.loads(adoption.read_text(encoding='utf-8-sig')) if adoption.is_file() else None}
 
 if __name__=='__main__':

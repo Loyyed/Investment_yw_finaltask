@@ -105,6 +105,19 @@ def report_text(state):
            '研究主体：'+company+'；信息截止：'+(d.get('information_cutoff') or 'Unknown（待确定）')+'。','',
            '## 研究意见摘要','',d.get('summary') or (state.get('opinion_adoption') or {}).get('accepted_opinion') or 'Unknown：尚未填写总判断，系统不从收入增长自动生成投资结论。','',
            '## 研究范围与依据','',f"当前有效Fact {state['counts']['Fact']}条，Unknown {state['counts']['Unknown']}条。事实有效性以当前核验接口为准；原值、计算、研究意见和假设分别保留。",'']
+    if state.get('mode')=='legacy' and state.get('domains'):
+        domains=state['domains'];names={'change_facts':'变化记录','lec03_agent_facts':'授权Agent年度组','m01_scale_facts':'成本统计','m01_metric_facts':'指标统计','m01_disclosure_facts':'公司原话'}
+        detail='；'.join(label+str(domains[key])+'项' for key,label in names.items() if key in domains)
+        index=next(i for i,line in enumerate(lines) if line.startswith('当前有效Fact '))
+        lines[index]='原披露有效Fact '+str(domains.get('facts',0))+'项；'+detail+'。各独立核验域存在关联或重叠，不合计独立事实条数。当前未核原候选为'+str(state['counts']['Unknown'])+'项；事实有效性仍以当前来源绑定和各自接口为准。'
+    if state.get('content_reviews'):
+        labels={'accepted-current':'已认可（当前绑定有效）','pending':'待审','stale':'依据或版本变化，需重评','unavailable':'当前无法验证'}
+        lines+=['## 当前专项认可状态','','以下状态由本项目独立认可接口实时核对。内容认可、原披露Fact、签署与正式验收分别记录。','','| 内容 | 当前状态 | 签署及正式关闭 | 依据 |','| --- | --- | --- | --- |']
+        for review in state['content_reviews']:
+            signature='未新增签署' if review.get('new_signature_created') is False else '新签署未由本认可确认'
+            closing='未正式关闭' if review.get('formally_closed') is False else '正式关闭未由本认可确认'
+            lines+=['| '+' | '.join(cell(v) for v in (review.get('id','')+' '+review.get('label',''),labels.get(review.get('status'),review.get('status','当前无法验证')),signature+'；'+closing,review.get('source','')))+' |']
+        lines+=['']
     for key,title in SECTIONS:
         existing=state.get('research_sections',{}).get(key)
         content=d.get('sections',{}).get(key)
