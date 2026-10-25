@@ -92,6 +92,15 @@ def apply_chart_designs(spec, designs):
             if chart['title'] in designs['designs']:chart['visual']=copy.deepcopy(designs['designs'][chart['title']])
     return result
 
+def classic_svg(chart):
+    data=copy.deepcopy(chart);visual=data.pop('visual',{})
+    if visual.get('template') in ('hairline','plumb'):
+        data['visual']=visual;data['visual']['simple']=True
+        svg=visual_module().render_visual(data)
+        return svg.replace('#334EAC','#167d8d').replace('#BAD6EB','#d69545').replace('#F7F2EB','#ffffff')
+    data['kind']={'ribbon':'stack','composition':'stack','paired':'bar','dumbbell':'bar','stem':'bar','rungs':'bar'}.get(visual.get('template'),data.get('kind','bar'))
+    return chart_svg(data)
+
 def chart_svg(chart):
     """Zero-based bars; full percentage scale for margins; explicit missing gaps."""
     if chart.get('visual'):return visual_module().render_visual(chart)
@@ -141,7 +150,7 @@ def apply_story_enrichment(spec, enrichment):
     for id,update in enrichment.get('chapter_updates',{}).items():
         if id not in by_id:raise ValueError('叙事接续章节不存在：'+id)
         c=by_id[id]
-        for field in ('story_beats','transition'):
+        for field in ('story_beats','transition','mind_maps'):
             if field in update:c[field]=copy.deepcopy(update[field])
         for src,dest in [('append_blocks','blocks'),('append_charts','charts')]:
             current={x['title']:x for x in c.get(dest,[])}
@@ -167,6 +176,25 @@ def apply_story_enrichment(spec, enrichment):
             else:result.setdefault(field,[]).append(copy.deepcopy(value));current[key]=result[field][-1]
     return result
 
+def mindmap_html(data, chapters, current=None):
+    ids={c['id'] for c in chapters}
+    nodes=data['nodes']; positions=[(470,270),(30,38),(30,270),(30,502),(910,38),(910,270),(910,502)]
+    if len(nodes)!=7:raise ValueError('思维导图应含一个中心与六个分支')
+    pieces=['<figure class="mindmap"><figcaption><span class="eyebrow">研究思路 · 可点击的机制图</span><h3>'+e(data['title'])+'</h3><p>'+e(data['subtitle'])+'</p></figcaption><div class="map-scroll" tabindex="0"><svg viewBox="0 0 1260 680" role="img" aria-label="'+e(data['title'])+'"><title>'+e(data['title'])+'</title>']
+    for i in range(1,7):
+        x,y=positions[i]; left=i<4; a,b=(470,y+65) if left else (790,y+65)
+        pieces.append('<path d="M '+str(470 if left else 790)+' 335 C '+str(410 if left else 850)+' 335 '+str(410 if left else 850)+' '+str(y+65)+' '+str(x+320 if left else x)+' '+str(y+65)+'" fill="none" stroke="#7096D1" stroke-width="2" stroke-dasharray="5 5"/>')
+    for i,(node,(x,y)) in enumerate(zip(nodes,positions)):
+        target=node['target']
+        if target not in ids:raise ValueError('导图目标章节不存在：'+target)
+        href='#'+target if current is None or current==target else '../证券投资分析研究图册.html#'+target
+        pieces.append('<a href="'+e(href)+'" aria-label="'+e(node['label'])+'，阅读对应分析"><rect x="'+str(x)+'" y="'+str(y)+'" width="320" height="140" rx="15" fill="'+('#183d42' if i==0 else '#fff')+'" stroke="#BAD6EB"/><text x="'+str(x+18)+'" y="'+str(y+27)+'" fill="'+('#BAD6EB' if i==0 else '#63748d')+'" font-size="13">'+e(node['state'])+'</text><text x="'+str(x+18)+'" y="'+str(y+55)+'" fill="'+('#fff' if i==0 else '#183d42')+'" font-size="19" font-weight="600">'+e(node['label'])+'</text>')
+        for j,line in enumerate(node['lines'][:3]):pieces.append('<text x="'+str(x+18)+'" y="'+str(y+81+j*21)+'" fill="'+('#fff' if i==0 else '#334EAC')+'" font-size="15">'+e(line)+'</text>')
+        pieces.append('</a>')
+    pieces.append('</svg></div><p class="chart-reading">虚线连接研究问题与可能机制，不表示已证实因果。点击节点前往对应章节。</p><div class="refs">'+''.join('<a href="#src-'+e(r)+'">['+e(r)+']</a>' for r in data['refs'])+'</div>'+analysis_details(data['analysis']))
+    pieces.append('<details><summary>节点依据与阅读顺序</summary>'+''.join('<p><strong>'+e(n['label'])+'</strong>：'+e(n['note'])+'</p>' for n in nodes)+'</details></figure>')
+    return re.sub(r'<text([^>]*?)fill="([^"]+)"',lambda m:'<text'+m.group(1)+'style="fill:'+m.group(2)+'" fill="'+m.group(2)+'"',''.join(pieces))
+
 def render(spec, chapter=None, nonce='', source_url=None):
     base=Path(__file__).parent;css=(base/'insight.css').read_text(encoding='utf-8');js=(base/'insight.js').read_text(encoding='utf-8')
     chapters=spec['chapters'];chosen=[c for c in chapters if not chapter or c['id']==chapter]
@@ -183,10 +211,12 @@ def render(spec, chapter=None, nonce='', source_url=None):
         if c.get('flow'):b.append('<div class="flow">'+''.join('<div><small>'+str(i+1).zfill(2)+'</small><strong>'+e(x[0])+'</strong><p>'+e(x[1])+'</p></div>' for i,x in enumerate(c['flow']))+'</div>')
         for item in c.get('blocks',[]):
             b.append('<article class="argument"><h3>'+e(item['title'])+'</h3>'+''.join('<p>'+e(x)+'</p>' for x in item['paragraphs'])+refs(item.get('refs',[]))+'</article>')
+        for map_data in c.get('mind_maps',[]):b.append(mindmap_html(map_data,chapters,chapter))
         if c.get('charts'):
             b.append('<div class="chart-grid">')
             for ch in c['charts']:
                 legend='<div class="chart-legend">'+''.join('<span><i style="background:'+['#167d8d','#d69545','#63748d','#7bb6a5'][j%4]+'"></i>'+e(item['label'])+'</span>' for j,item in enumerate(ch['series']))+'</div>'
+                classic_legend=legend
                 visual=ch.get('visual')
                 if visual:
                     if visual.get('template')=='dumbbell':
@@ -195,9 +225,12 @@ def render(spec, chapter=None, nonce='', source_url=None):
                     else:
                         items=visual.get('legend_items') or [{'label':item['label'],'color':visual_module().COLORS[j%4]} for j,item in enumerate(ch['series'])]
                         legend='<div class="chart-legend">'+''.join('<span><i style="background:'+e(item['color'])+'"></i>'+e(item['label'])+'</span>' for item in items)+'</div>'
+                if visual:
+                    if visual.get('template')=='plumb':classic_legend='<div class="chart-legend"><span><i style="background:#d69545"></i>2016—2021</span><span><i style="background:#167d8d"></i>2022—2025</span></div>'
+                    legend='<div class="plot-porcelain">'+legend+'</div><div class="plot-classic">'+classic_legend+'</div>'
                 figure_class='figure-replica'+(' figure-wide' if visual and visual.get('full_width') else '') if visual else ''
                 controls=('<div class="chart-tools"><span>'+e(visual_module().NAMES[visual['template']])+'</span><button type="button" data-chart-replay>↻ 重播绘制</button></div>') if visual else ''
-                b.append('<figure class="'+figure_class+'"><figcaption><span class="eyebrow">'+e(ch.get('tag','计算 · AgentCalculated'))+'</span><h3>'+e(ch['title'])+'</h3><p>'+e(ch['subtitle'])+'</p></figcaption>'+legend+controls+'<div class="chart-unit">'+e(ch['unit'])+'</div>'+'<div class="chart-canvas" tabindex="0" role="region" aria-label="'+e(ch['title'])+'">'+chart_svg(ch)+'</div>'+('<p class="chart-pan-hint">窄屏可横向滑动图形，查看完整刻度与标签。</p>' if visual else '')+'<p class="chart-reading">'+e(ch['reading'])+'</p>'+refs(ch['refs']))
+                b.append('<figure class="'+figure_class+'"><figcaption><span class="eyebrow">'+e(ch.get('tag','计算 · AgentCalculated'))+'</span><h3>'+e(ch['title'])+'</h3><p>'+e(ch['subtitle'])+'</p></figcaption>'+legend+controls+'<div class="chart-unit">'+e(ch['unit'])+'</div>'+'<div class="chart-canvas" tabindex="0" role="region" aria-label="'+e(ch['title'])+'">'+('<div class="plot-porcelain">'+chart_svg(ch)+'</div><div class="plot-classic">'+classic_svg(ch)+'</div>' if visual else chart_svg(ch))+'</div>'+('<p class="chart-pan-hint">窄屏可横向滑动图形，查看完整刻度与标签。</p>' if visual else '')+'<p class="chart-reading">'+e(ch['reading'])+'</p>'+refs(ch['refs']))
                 hdr=['期间／类别']+[x['label']+'（'+ch['unit']+'）' for x in ch['series']]
                 vals=[[r['label']]+['Unknown' if r.get(s['key']) is None else number(r[s['key']],ch.get('precision',2)) for s in ch['series']] for r in ch['rows']]
                 b.append(analysis_details(ch.get('analysis')))
@@ -225,7 +258,7 @@ def render(spec, chapter=None, nonce='', source_url=None):
     nav=''.join('<a href="'+('#'+e(c['id']) if not chapter or c['id']==chapter else '../证券投资分析研究图册.html#'+e(c['id']))+'"><span>'+e(c['number'])+'</span>'+e(c['nav'])+'</a>' for c in chapters)
     data=json.dumps({'forecast':spec['forecast'],'precomputed':spec['forecast_results']},ensure_ascii=False).replace('<','\\u003c').replace('&','\\u0026')
     title=spec['title'] if not chapter else chosen[0]['title']+'｜'+spec['company']+'研究图册'
-    page= '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+e(title)+'</title><style>'+css+'</style></head><body><a class="skip" href="#main">跳到报告正文</a><aside class="rail"><a class="brand" href="#main">研投<span>RESEARCH ATLAS / 600519</span></a><p>从证据，走向解释与预测</p><nav aria-label="合同章节">'+nav+'<a href="#sources">↳ 来源与批注</a></nav><div class="rail-foot">2026.10.25 · 研究扩展稿<br>新增观点及预测待人工最终裁决</div></aside><main id="main"><header class="cover"><div class="eyebrow">SECURITIES RESEARCH / 贵州茅台</div><div class="toolbar"><button id="guide-toggle" aria-pressed="false">显示初学者提示</button><button id="print-report">打印 / 保存PDF</button></div><h1>'+e(title)+'</h1><p class="deck">'+e(spec['subtitle'])+'</p><div class="cover-meta"><span>主实证：2020—2024</span><span>独立后验：2025</span><span>条件预测：2026—2028</span></div><p class="snapshot">'+e(spec['snapshot_note'])+'</p><p class="guide">阅读顺序：先看每章判断，再读图下解释；点击方括号编号看来源。ASP是匹配收入÷公司销量；pp是百分点；CFO是合并经营活动现金流净额。预测表是条件运算，不是将来的确定事实。</p></header>'+''.join(body)+'<section id="sources" class="chapter"><div class="eyebrow">EVIDENCE NOTES</div><h2>来源、运算与阅读批注</h2><p>原始Fact、公司自述、研究推断和Forecast分别标注。未补足的指标不填零；本图册没有新增人工核验、采纳或签署。下列本地原件链接在GitHub副本中可能不可访问，原件按授权留本地。</p><div class="citations">'+''.join(citations)+'</div></section><footer>生成于2026-10-25 · 附件优先 · 研究内容不继承P04等旧版本认可 · 最终裁决由人工完成</footer></main><script nonce="'+e(nonce)+'" id="atlas-data" type="application/json">'+data+'</script><script nonce="'+e(nonce)+'">'+js+'</script></body></html>'
+    page= '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+e(title)+'</title><style>'+css+'</style></head><body><a class="skip" href="#main">跳到报告正文</a><aside class="rail"><a class="brand" href="#main">研投<span>RESEARCH ATLAS / 600519</span></a><p>从证据，走向解释与预测</p><nav aria-label="合同章节">'+nav+'<a href="#sources">↳ 来源与批注</a></nav><div class="rail-foot">2026.10.25 · 研究扩展稿<br>新增观点及预测待人工最终裁决</div></aside><main id="main"><header class="cover"><div class="eyebrow">SECURITIES RESEARCH / 贵州茅台</div><div class="toolbar"><div class="style-toggle" role="group" aria-label="图形风格"><button data-plot-style="porcelain" aria-pressed="true">青瓷复刻</button><button data-plot-style="classic" aria-pressed="false">常规图</button></div><button id="guide-toggle" aria-pressed="false">显示初学者提示</button><button id="print-report">打印 / 保存PDF</button></div><h1>'+e(title)+'</h1><p class="deck">'+e(spec['subtitle'])+'</p><div class="cover-meta"><span>主实证：2020—2024</span><span>独立后验：2025</span><span>条件预测：2026—2028</span></div><p class="snapshot">'+e(spec['snapshot_note'])+'</p><p class="guide">阅读顺序：先看每章判断，再读图下解释；点击方括号编号看来源。ASP是匹配收入÷公司销量；pp是百分点；CFO是合并经营活动现金流净额。预测表是条件运算，不是将来的确定事实。</p></header>'+''.join(body)+'<section id="sources" class="chapter"><div class="eyebrow">EVIDENCE NOTES</div><h2>来源、运算与阅读批注</h2><p>原始Fact、公司自述、研究推断和Forecast分别标注。未补足的指标不填零；本图册没有新增人工核验、采纳或签署。下列本地原件链接在GitHub副本中可能不可访问，原件按授权留本地。</p><div class="citations">'+''.join(citations)+'</div></section><footer>生成于2026-10-25 · 附件优先 · 研究内容不继承P04等旧版本认可 · 最终裁决由人工完成</footer></main><script nonce="'+e(nonce)+'" id="atlas-data" type="application/json">'+data+'</script><script nonce="'+e(nonce)+'">'+js+'</script></body></html>'
 
     return page.replace('RESEARCH ATLAS / 600519','RESEARCH ATLAS / '+e(spec.get('security_code',''))).replace('SECURITIES RESEARCH / 贵州茅台','SECURITIES RESEARCH / '+e(spec['company'])).replace('2026.10.25',e(spec['date'])).replace('2026-10-25',e(spec['date']))
 

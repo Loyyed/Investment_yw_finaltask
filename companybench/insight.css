@@ -12,3 +12,7 @@
 .chart-canvas{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain}.chart-canvas:focus-visible{outline:2px solid #7096D1;outline-offset:4px}.chart-pan-hint{display:none;font-size:11px;color:#7096D1}@media(max-width:720px){.chart-canvas .vis-svg{min-width:640px}.figure-replica .chart-pan-hint{display:block}}
 
 @media print{.chart-canvas{overflow:visible}.chart-canvas .vis-svg{min-width:0;width:100%}.chart-pan-hint{display:none}}
+
+.plot-classic{display:none}body[data-plot-style=classic] .plot-classic{display:block}body[data-plot-style=classic] .plot-porcelain{display:none}body[data-plot-style=classic] .figure-replica{background:#fff;border-color:#d9e4df;border-radius:12px}.style-toggle{display:inline-flex;gap:4px;padding:3px;border:1px solid #c8d9d4;border-radius:9px}.style-toggle button{border:0;padding:5px 10px}.style-toggle button[aria-pressed=true]{background:#183d42;color:white}@media(max-width:720px){.chart-canvas .plot-classic svg{min-width:640px}}@media print{.style-toggle{display:none}.chart-canvas .plot-classic svg{min-width:0}}
+
+.mindmap{margin:28px 0;padding:24px;background:#f7f2eb;border:1px solid #c8d9e5;border-radius:18px}.mindmap svg{display:block;width:100%;height:auto;font-family:system-ui,"Microsoft YaHei",sans-serif}.map-scroll{overflow:auto}.mindmap a:focus rect,.mindmap a:hover rect{stroke:#d69545;stroke-width:3}.mindmap h3{font-size:24px}.mindmap text{pointer-events:none}@media(max-width:1050px){.mindmap svg{min-width:950px}}@media print{.mindmap svg{min-width:0}.mindmap{break-inside:avoid}}

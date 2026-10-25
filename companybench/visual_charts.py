@@ -59,10 +59,10 @@ def rungs(ch):
   for j,ser in enumerate(series):
    value=row.get(ser['key'])
    if value is None:continue
-   value=float(value);x=center+(j-(len(series)-1)/2)*min(15,step/(len(series)+2));span=min(26,step/(len(series)+1)*.64);n=int(abs(value)/unit);direction=1 if value>=0 else -1;col=COLORS[j%4]
+   value=float(value);x=center+(j-(len(series)-1)/2)*min(30,step/(len(series)+2));span=min(18,step/(len(series)+1)*.5);n=int(abs(value)/unit);direction=1 if value>=0 else -1;col=COLORS[j%4]
    for k in range(1,n+1):yy=y(direction*k*unit);s.line(x-span/2,yy,x+span/2,yy,col,1.4,**{'class':'vis-mark'})
    endpoint=y(value);s.line(x-span/2,endpoint,x+span/2,endpoint,col,2.4)
-   if len(rows)*len(series)<=12:s.text(x,endpoint-12 if value>=0 else endpoint+20,fmt(value,prec),14,BLUE,'middle',**{'font-weight':700})
+   if len(rows)*len(series)<=12:s.text(x,endpoint-12-j*23 if value>=0 else endpoint+20+j*23,fmt(value,prec),14,BLUE,'middle',**{'font-weight':700})
    s.el('circle',{'cx':x,'cy':endpoint,'r':9,'fill':'transparent'},'<title>'+esc(row['label']+' · '+ser['label']+' '+fmt(value,prec)+ch['unit'])+'</title>')
   label=str(row['label']);parts=label.split(' n')
   s.text(center,292,parts[0],14,INK,'middle')
@@ -75,7 +75,7 @@ def hairline(ch):
  def year(row):
   try:return int(str(row['label'])[:4])
   except ValueError:return 0
- boundary=v.get('break_at');post=v.get('post_period')
+ boundaries=v.get('breaks',[]);boundary=v.get('break_at');post=v.get('post_period')
  if boundary:
   idx=next((i for i,r in enumerate(rows) if year(r)>=boundary),None)
   if idx is not None:
@@ -89,13 +89,14 @@ def hairline(ch):
    value=r.get(ser['key'])
    if value is None:draw();segment=[];continue
    yy=y(float(value));ispost=bool(post and year(r)>=post)
-   if i and (boundary and year(r)>=boundary>year(rows[i-1]) or ispost):
+   if i and (boundary and year(r)>=boundary>year(rows[i-1]) or any(year(r)>=b>year(rows[i-1]) for b in boundaries) or ispost):
     draw();segment=[]
     if ispost and rows[i-1].get(ser['key']) is not None:s.line(x(i-1),y(float(rows[i-1][ser['key']])),x(i),yy,col,1.5,**{'stroke-dasharray':'4 5'})
    segment.append(f'{x(i)},{yy}');s.point(x(i),yy,str(r['label'])+' · '+ser['label']+' '+fmt(value,ch.get('precision',2))+ch['unit'],PAPER if ispost else col,r=4)
-   if len(rows)<=6 or i in (0,len(rows)-1):s.text(x(i),yy-15-j*12,fmt(value,ch.get('precision',2)),14,col,'middle')
+   if v.get('show_values',True) and (len(rows)<=6 or i in (0,len(rows)-1)):s.text(x(i),yy-15-j*12,fmt(value,ch.get('precision',2)),14,col,'middle')
   draw()
- for i,r in enumerate(rows):s.text(x(i),294,str(r['label']),13,INK,'middle')
+ for i,r in enumerate(rows):
+  if i%v.get('tick_every',1)==0 or i==len(rows)-1:s.text(x(i),294,str(r['label']),13,INK,'middle')
  if v.get('reference_line') is not None:
   val=float(v['reference_line'])
   if lo<=val<=hi:s.line(left,y(val),right,y(val),MID,1,**{'stroke-dasharray':'3 5'});s.text(right,y(val)-8,'参考 '+str(val),12,MID,'end')
@@ -179,7 +180,7 @@ def plumb(ch):
  for r in ch['rows']:
   a,b=r.get(xkey),r.get(ykey)
   if a is None or b is None:continue
-  x,y=xx(a),yy(b);post=int(str(r['label'])[:4])>=int(v.get('break_at',2022));color=BLUE if post else LIGHT;s.line(x,bottom,x,y,color,.9,opacity=.6);s.point(x,y,str(r['label'])+'；X='+fmt(a,2)+'%；Y='+fmt(b,2)+'%',color,5)
+  x,y=xx(a),yy(b);post=int(str(r['label'])[:4])>=int(v.get('break_at',2022));color=BLUE if post else LIGHT;(None if v.get('simple') else s.line(x,bottom,x,y,color,.9,opacity=.6));s.point(x,y,str(r['label'])+'；X='+fmt(a,2)+'%；Y='+fmt(b,2)+'%',color,5)
   tx,ty=x+9,y-8
   for dx,dy in [(9,-8),(9,22),(-46,-8),(9,-28),(-46,22),(9,40)]:
    bx,by=x+dx,y+dy;box=(bx-2,by-14,bx+39,by+3)
