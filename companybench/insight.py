@@ -1,7 +1,7 @@
 """Evidence-bound analytical HTML. No review writes, network or company defaults."""
 from pathlib import Path
 from decimal import Decimal, localcontext
-import argparse, hashlib, html, json, math, re, sys, subprocess
+import argparse, hashlib, html, json, math, re, sys, subprocess, copy
 
 SPEC_PATH = 'work/research-atlas-current.json'
 
@@ -110,6 +110,39 @@ def analysis_details(analysis, summary='图表分析：含义、用途与推断'
     labels=[('meaning','图表含义'),('use','研究用途'),('inference','分析与推断')]
     return '<details class="chart-analysis"><summary>'+e(summary)+'</summary><dl>'+''.join('<dt>'+label+'</dt><dd>'+e(analysis.get(key,'待补充'))+'</dd>' for key,label in labels)+'</dl></details>'
 
+def apply_story_enrichment(spec, enrichment):
+    """Compose authored storytelling without replacing existing chart or model data."""
+    result=copy.deepcopy(spec)
+    by_id={c['id']:c for c in result['chapters']}
+    for id,update in enrichment.get('chapter_updates',{}).items():
+        if id not in by_id:raise ValueError('叙事接续章节不存在：'+id)
+        c=by_id[id]
+        for field in ('story_beats','transition'):
+            if field in update:c[field]=copy.deepcopy(update[field])
+        for src,dest in [('append_blocks','blocks'),('append_charts','charts')]:
+            current={x['title']:x for x in c.get(dest,[])}
+            for value in update.get(src,[]):
+                old=current.get(value['title'])
+                if old is not None:
+                    if dest=='charts' and any(old.get(k)!=value.get(k) for k in ('rows','series','unit')):
+                        raise ValueError('叙事扩展不得覆盖原图数值：'+value['title'])
+                    old.update(copy.deepcopy(value))
+                else:c.setdefault(dest,[]).append(copy.deepcopy(value))
+    for c in enrichment.get('new_chapters',[]):
+        if c['id'] in by_id:
+            if by_id[c['id']]!=c:raise ValueError('专题编号冲突：'+c['id'])
+            continue
+        before=enrichment.get('insert_before');index=next((i for i,x in enumerate(result['chapters']) if x['id']==before),len(result['chapters']))
+        result['chapters'].insert(index,copy.deepcopy(c));by_id[c['id']]=result['chapters'][index]
+    for field,keys in [('sources',('id',)),('authority',('domain','id')),('dependencies',('path',))]:
+        current={tuple(x[k] for k in keys):x for x in result.get(field,[])}
+        for value in enrichment.get(field,[]):
+            key=tuple(value[k] for k in keys)
+            if key in current:
+                if current[key]!=value:raise ValueError('叙事扩展依据编号冲突：'+str(key))
+            else:result.setdefault(field,[]).append(copy.deepcopy(value));current[key]=result[field][-1]
+    return result
+
 def render(spec, chapter=None, nonce='', source_url=None):
     base=Path(__file__).parent;css=(base/'insight.css').read_text(encoding='utf-8');js=(base/'insight.js').read_text(encoding='utf-8')
     chapters=spec['chapters'];chosen=[c for c in chapters if not chapter or c['id']==chapter]
@@ -120,6 +153,8 @@ def render(spec, chapter=None, nonce='', source_url=None):
     body=[]
     for c in chosen:
         b=[f'<section id="{e(c["id"])}" class="chapter"><header class="chapter-head"><div class="eyebrow">{e(c["kicker"])}</div><h2>{e(c["title"])}</h2><p class="question">{e(c["question"])}</p><div class="verdict"><span>研究判断 · Interpretation</span><p>{e(c["thesis"])}</p>{refs(c.get("refs",[]))}</div></header>']
+        if c.get('story_beats'):
+            b.append('<div class="story-sequence"><div class="eyebrow">把变化放回经营过程 · 研究者解释</div><ol>'+''.join('<li><span class="story-step">'+str(i+1).zfill(2)+'</span><div><h3>'+e(x['title'])+'</h3><p>'+e(x['text'])+'</p>'+refs(x.get('refs',[]))+'</div></li>' for i,x in enumerate(c['story_beats']))+'</ol></div>')
         if c.get('scope'):b.append('<p class="scope">'+e(c['scope'])+'</p>')
         if c.get('flow'):b.append('<div class="flow">'+''.join('<div><small>'+str(i+1).zfill(2)+'</small><strong>'+e(x[0])+'</strong><p>'+e(x[1])+'</p></div>' for i,x in enumerate(c['flow']))+'</div>')
         for item in c.get('blocks',[]):
@@ -140,6 +175,11 @@ def render(spec, chapter=None, nonce='', source_url=None):
             b.append('<div class="forecast-lab"><div class="eyebrow">FORECAST LAB · 条件模型</div><h3>改一个假设，看看未来会怎样</h3><p>默认展示研究基准；三个情景并无概率或置信区间含义。滑块仅覆盖首个预测年，后续沿用该情景年度参数。离线改动只在当前页面计算，刷新恢复。</p><div class="scenario-tabs" role="group" aria-label="预测情景">'+''.join('<button data-scenario="'+e(k)+'" aria-pressed="'+('true' if k=='base' else 'false')+'">'+e(v['label'])+'</button>' for k,v in spec['forecast']['scenarios'].items())+'</div><div class="sliders"><label>首个预测年 · 核心产品公司销量增速 <output id="q-label"></output><input id="q-input" type="range" min="-10" max="12" step="0.5"></label><label>首个预测年 · 核心产品组合均价变化 <output id="p-label"></output><input id="p-input" type="range" min="-12" max="10" step="0.5"></label><label>首个预测年 · 公司销售费用率 <output id="s-label"></output><input id="s-input" type="range" min="3" max="7" step="0.1"></label></div><div id="forecast-output" aria-live="polite"></div><details><summary>模型公式、全部参数与假设来源</summary><p>'+e(spec['forecast']['formula_note'])+'</p>'+table(['情景','年份','茅台量%','茅台ASP%','系列量%','系列ASP%','毛利变动pp','销售费率%','增量保留%','CFO/净利'],[[v['label'],yr]+[number(v[k][i]*(100 if k!='cash_ratio' else 1)) for k in ['mt_q','mt_p','sr_q','sr_p','gm_delta','selling_rate','retention','cash_ratio']] for v in spec['forecast']['scenarios'].values() for i,yr in enumerate(spec['forecast']['years'])])+parameter_analysis+'<p>'+e(spec['forecast']['assumption_note'])+'</p></details><button id="reset-forecast">恢复所选情景</button></div>')
         b.append('<div class="reason-grid"><article><span class="eyebrow">替代解释</span><h3>'+e(c['alternative'][0])+'</h3><p>'+e(c['alternative'][1])+'</p></article><article><span class="eyebrow">如何推翻当前判断</span><h3>'+e(c['falsifier'][0])+'</h3><p>'+e(c['falsifier'][1])+'</p></article></div>')
         b.append('<div class="next"><strong>接下来观察什么</strong><p>'+e(c['next'])+'</p></div>')
+        if c.get('transition'):
+            t=c['transition'];target=t['target']
+            if target not in {x['id'] for x in chapters}:raise ValueError('叙事接续目标不存在：'+target)
+            href=('#'+target) if not chapter or target==chapter else '../证券投资分析研究图册.html#'+target
+            b.append('<div class="chapter-bridge"><small>这一章怎样接到下一环</small><p>'+e(t['text'])+'</p><a href="'+e(href)+'">'+e(t['label'])+' →</a></div>')
         if c.get('deliverables'):b.append('<details><summary>合同问题对应与已有过程底稿</summary>'+''.join('<p>'+e(x)+'</p>' for x in c['deliverables'])+'</details>')
         b.append('</section>');body.extend(b)
     citations=[]
