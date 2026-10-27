@@ -23,6 +23,7 @@ def main(argv=None):
     sub=parser.add_subparsers(dest='command',required=True)
     p=sub.add_parser('serve',help='打开本地操作窗口');p.add_argument('--root',type=Path,default=ROOT);p.add_argument('--port',type=int,default=0);p.add_argument('--no-browser',action='store_true')
     p=sub.add_parser('new',help='创建独立公司项目');p.add_argument('--company',required=True);p.add_argument('--code',default='');p.add_argument('--profile',choices=['general','consumer','industrial','financial'],default='general');p.add_argument('--path',type=Path)
+    p=sub.add_parser('start',help='生成当前公司研究起步台与空简报，不核准事实');p.add_argument('--project',type=Path,default=ROOT)
     sub.add_parser('doctor',help='检查Python、Git及可选PDF工具')
     p=sub.add_parser('series-audit',help='只读检查附件CSV，不确认Fact');p.add_argument('--source',type=Path,required=True);p.add_argument('--cutoff');p.add_argument('--output',type=Path)
     p=sub.add_parser('link',help='连接已有项目，不迁移事实账本');p.add_argument('--root',type=Path,default=ROOT);p.add_argument('--directory',type=Path,required=True);p.add_argument('--name',default='')
@@ -49,7 +50,12 @@ def main(argv=None):
             serve(args.root,args.port,not args.no_browser);return 0
         if command=='new':
             if not (ROOT/'templates').exists() or (ROOT/'project.json').exists():raise WorkbenchError('请从通用工作台主目录新建公司项目')
-            result={'project':str(create_project(args.company,args.code,args.profile,args.path))}
+            from .delivery import build_start
+            project=create_project(args.company,args.code,args.profile,args.path)
+            result={'project':str(project),'start':build_start(project)}
+        elif command=='start':
+            from .delivery import build_start
+            result=build_start(args.project)
         elif command=='link':
             from .workspace import link_project
             result={'project':link_project(args.root,args.directory,args.name)}

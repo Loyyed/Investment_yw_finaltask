@@ -1,4 +1,8 @@
 # 通用工作台当前交接
+> 2026-10-27合同完整性：delivery新增reader_v2.contract_checks可见逐问回答/表格/来源与底稿组件；交付skill新增原文版本—必答条款—正文锚点—底稿—实际关口对照，非列表提问/表格/公式亦查，不以文末文件名代正文答案。原数或模型变更须重审答案；归档、内容覆盖、人审、正式签署、Git发布分别验收。公司案例数字/授权未注入通用代码，核验核心未改。
+> 2026-10-25图册增补：V2.0全部14章在“这章在回答什么”后增加“本章的结论与判断”，含直接结论、研究判断、边界/后续观察及来源跳转；原数、图表和原三年情景未变，新文字不继承旧人审。底稿见公司work/research-delivery-v2-20261025/chapter-answers.json。
+> 最终入口：公司outputs/投资研究系统_V2.0_总入口.html；18页PPTX/HTML、讲稿、四张PNG/SVG导图齐备。工作台已接同源批次预览与冻结导出，预览不写Fact。验证见公司work/research-delivery-v2-20261025/validation.json。
+> 2026-10-25 V2.0交付新增：skills/investment-research-delivery整合确认逻辑、逐合同表达、路演和行业迁移。companybench.delivery提供白话导读/导图/研究起步台；insight对reader_v2规格叠加导读并继续当前来源校验。网页首页“填写研究简报”，new默认生成起步台，start --project可补已有普通项目；草稿/个人勾选不写Fact。core.py原字节保持，新公司不含案例数据/参数/授权。使用见docs/2026-10-25-研究交付V2与起步台.md。
 
 2026-10-25。目标是本目录投资学公司分析通用工作台，远端Loyyed/Investment_yw_finaltask；公司数据在各自独立项目，案例授权与数值不迁移。
 

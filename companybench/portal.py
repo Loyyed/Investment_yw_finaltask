@@ -53,13 +53,14 @@ def make_server(root=ROOT,port=0):
     root=Path(root).resolve();token=secrets.token_hex(24)
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,format,*args):pass
-        def send(self,data,status=200,content='application/json; charset=utf-8',disposition=None,interactive=False):
+        def send(self,data,status=200,content='application/json; charset=utf-8',disposition=None,interactive=False,downloadable=False):
             if isinstance(data,(dict,list)):data=json.dumps(data,ensure_ascii=False).encode('utf-8')
             elif isinstance(data,str):data=data.encode('utf-8')
             self.send_response(status);self.send_header('Content-Type',content);self.send_header('Content-Length',str(len(data)))
             self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff')
             if interactive:
                 policy="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-"+token+"'; connect-src 'none'; img-src 'self' data:; form-action 'none'; frame-ancestors 'none'; sandbox allow-scripts allow-popups allow-top-navigation-by-user-activation"
+                if downloadable:policy+=' allow-downloads'
                 self.send_header('Content-Security-Policy',policy)
             else:
                 self.send_header('Content-Security-Policy',"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'nonce-"+token+"'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'" if self.path.split('?')[0]=='/' else "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; sandbox allow-popups allow-top-navigation-by-user-activation")
@@ -92,6 +93,16 @@ def make_server(root=ROOT,port=0):
                         value['selected']['report_stale']=bool(latest and latest['fingerprint']!=report_fingerprint(value['selected']))
                         for m in value['selected']['models']:m['current']=model_current(m,value['selected']['records'])
                     self.send(value);return
+                if route.path=='/api/review-preview':
+                    from .delivery import render_review_preview
+                    selected=query.get('project',[''])[0];self.project(selected);entry=inventory(root)[selected];state=selected_state(entry,selected)
+                    page=render_review_preview(state['settings']['company'],state['records']).replace('<script','<script nonce="'+token+'"')
+                    self.send(page,content='text/html; charset=utf-8',interactive=True,downloadable=True);return
+                if route.path=='/api/start':
+                    from .delivery import render_start
+                    selected=query.get('project',[''])[0];self.project(selected);entry=inventory(root)[selected];info=project_info(entry)
+                    page=render_start(info['company'],info.get('code',''),info.get('profile','general')).replace('<script','<script nonce="'+token+'"')
+                    self.send(page,content='text/html; charset=utf-8',interactive=True,downloadable=True);return
                 if route.path=='/api/insight':
                     from .insight import read_spec,validate_current,render
                     selected=query.get('project',[''])[0];p=self.project(selected);entry=inventory(root)[selected]
@@ -148,6 +159,8 @@ def make_server(root=ROOT,port=0):
                 if action=='/api/new':
                     if (root/'project.json').exists():raise WorkbenchError('独立公司项目内不创建其他公司；请从通用工作台新建')
                     p=create_project(data['company'],data.get('code',''),data.get('profile','general'),kit=root)
+                    from .delivery import build_start
+                    build_start(p)
                     self.send({'project':p.name});return
                 if action=='/api/link':
                     self.send({'project':link_project(root,data['path'],data.get('label',''))});return
