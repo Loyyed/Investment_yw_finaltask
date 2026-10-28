@@ -46,25 +46,61 @@ def validate_current(project, spec, mode='legacy'):
     if stale:raise ValueError('研究图册依据已变化，请更新分析后重生成：'+', '.join(stale[:8]))
     return {'status':'current','authority_records_checked':len(spec['authority']),'dependencies_checked':len(spec.get('dependencies',[]))}
 
+def volume_from_lag(model, scenario, prefix, index, overrides=None):
+    """Historical-scale lag reference plus explicitly assumed release/acceptance stages.
+
+    The reference is NOT cohort yield, an observed mature stock, or a hard capacity.
+    Additional inventory adjustment is relative to the historical mixed-stock baseline.
+    """
+    D=lambda x:Decimal(str(x))
+    driver=model['volume_drivers'][prefix];s=model['scenarios'][scenario]
+    lag=int((overrides or {}).get(prefix+'_lag',driver['lag_years']))
+    if lag<int(driver.get('minimum_lag',0)):raise ValueError('滞后低于该产品设定的最短窗口')
+    base_year=int(model['baseline']['year'])-lag;source_year=int(model['years'][index])-lag
+    production=driver['production_by_year']
+    if str(base_year) not in production or str(source_year) not in production:raise ValueError('缺少实际年份的基酒输入，停止销量推演')
+    base_prod=D(production[str(base_year)]);prod=D(production[str(source_year)])
+    if base_prod<=0 or prod<0:raise ValueError('基酒输入不在有效范围')
+    reference=D(model['baseline'][prefix+'_volume'])*prod/base_prod
+    params={k:D(s[prefix+'_'+k][index]) for k in ['mature','inventory_tonnes','release','acceptance']}
+    if index==0:
+        for k in params:
+            if prefix+'_'+k in (overrides or {}):params[k]=D(overrides[prefix+'_'+k])
+    if params['mature']<=0 or not 0<=params['release']<=1 or not 0<=params['acceptance']<=1:raise ValueError('成熟修正/投放/承接参数越界')
+    mature=reference*params['mature'];available=mature+params['inventory_tonnes']
+    if available<0:raise ValueError('额外库存调整后情景尺度为负')
+    planned=available*params['release'];sales=planned*params['acceptance']
+    return {'lag_years':lag,'source_year':source_year,'base_production':base_prod,'base_liquor':prod,'supply_reference':reference,'mature_adjusted':mature,'inventory_adjustment':params['inventory_tonnes'],'planned_release':planned,'conditional_sales':sales,'release_rate':params['release'],'acceptance_rate':params['acceptance']}
+
 def forecast(model, scenario, overrides=None):
-    """Conditional product volume × mixed company ASP; no price target or FCFF."""
+    """Conditional volume and company ASP; optional lag-driven volume, never FCFF."""
     with localcontext() as ctx:
         ctx.prec=40
         D=lambda x:Decimal(str(x));b=model['baseline'];s=model['scenarios'][scenario]
         mtq,mtp,srq,srp=(D(b[k]) for k in ['mt_volume','mt_asp','sr_volume','sr_asp'])
         wr0=mtq*mtp+srq*srp;gm0=D(b['gross_margin']);np0=D(b['net_profit']);se0=D(b['selling_expense']);other=D(b['other_revenue'])
-        gm=gm0;out=[]
+        gm=gm0;out=[];drivers=model.get('volume_drivers')
         for i,year in enumerate(model['years']):
             vals={k:D(s[k][i]) for k in ['mt_q','mt_p','sr_q','sr_p','gm_delta','selling_rate','retention','cash_ratio']}
             if i==0:
                 for k,v in (overrides or {}).items():
-                    if k not in ('mt_q','mt_p','selling_rate'):raise ValueError('未知预测参数')
-                    vals[k]=D(v)
-            if any(vals[k]<=-1 for k in ['mt_q','mt_p','sr_q','sr_p']):raise ValueError('量价增速必须大于-100%')
-            mtq*=1+vals['mt_q'];mtp*=1+vals['mt_p'];srq*=1+vals['sr_q'];srp*=1+vals['sr_p'];gm+=vals['gm_delta']
+                    if drivers and k in ['mt_q','sr_q']:raise ValueError('滞后模型销量增速为结果，请修改投放或承接条件')
+                    if k in ('mt_p','selling_rate') or (not drivers and k=='mt_q'):vals[k]=D(v)
+                    elif not (drivers and any(k==p+'_'+a for p in drivers for a in ['lag','mature','inventory_tonnes','release','acceptance'])):raise ValueError('未知预测参数')
+            if any(vals[k]<=-1 for k in ['mt_p','sr_p']) or (not drivers and any(vals[k]<=-1 for k in ['mt_q','sr_q'])):raise ValueError('量价增速必须大于-100%')
+            prev_mt,prev_sr=mtq,srq;extra={}
+            if drivers:
+                for prefix in ['mt','sr']:
+                    trace=volume_from_lag(model,scenario,prefix,i,overrides)
+                    extra.update({prefix+'_'+k:v for k,v in trace.items()})
+                mtq=extra['mt_conditional_sales'];srq=extra['sr_conditional_sales']
+            else:mtq*=1+vals['mt_q'];srq*=1+vals['sr_q']
+            mtp*=1+vals['mt_p'];srp*=1+vals['sr_p'];gm+=vals['gm_delta']
             if not 0<=gm<=1 or not 0<=vals['selling_rate']<=1 or not 0<=vals['retention']<=1:raise ValueError('比例超出模型边界')
             wr=mtq*mtp+srq*srp;rev=wr+other;se=rev*vals['selling_rate'];delta=wr*gm-wr0*gm0-(se-se0);np=np0+delta*vals['retention']
-            out.append({k:str(v) for k,v in {'year':year,'mt_volume':mtq,'mt_asp':mtp,'sr_volume':srq,'sr_asp':srp,'wine_revenue':wr,'revenue':rev,'gross_margin':gm,'selling_expense':se,'net_profit_bridge':np,'consolidated_cfo_sensitivity':np*vals['cash_ratio']}.items()})
+            values={'year':year,'mt_volume':mtq,'mt_asp':mtp,'sr_volume':srq,'sr_asp':srp,'wine_revenue':wr,'revenue':rev,'gross_margin':gm,'selling_expense':se,'net_profit_bridge':np,'consolidated_cfo_sensitivity':np*vals['cash_ratio']}
+            if drivers:values.update(extra,mt_volume_growth=mtq/prev_mt-1,sr_volume_growth=srq/prev_sr-1)
+            out.append({k:str(v) for k,v in values.items()})
         return out
 
 def e(v):return html.escape(str(v),quote=True)
@@ -264,6 +300,12 @@ def render(spec, chapter=None, nonce='', source_url=None):
         delivery_spec=importlib.util.spec_from_file_location('workbench_delivery',Path(__file__).with_name('delivery.py'))
         delivery=importlib.util.module_from_spec(delivery_spec);delivery_spec.loader.exec_module(delivery)
         page=delivery.enhance_atlas(page,spec,chapter)
+    if spec.get('forecast',{}).get('volume_drivers'):
+        page=page.replace('首个预测年 · 核心产品公司销量增速','首个预测年 · 茅台酒计划投放比例')
+        page=page.replace('id="q-input" type="range" min="-10" max="12"','id="q-input" type="range" min="70" max="100"')
+        page=page.replace('滑块仅覆盖首个预测年，后续沿用该情景年度参数','投放滑块只覆盖首个预测年；t−5基酒原量始终进入销量计算，后续沿所选情景条件')
+        page=page.replace('修改滑块仅覆盖首个预测年的三项参数','修改滑块覆盖首年的投放比例、ASP与销售费率，销量增速由供给链计算')
+        page=page.replace('茅台量%','茅台量增%（结果）').replace('系列量%','系列量增%（结果）')
     return page.replace('RESEARCH ATLAS / 600519','RESEARCH ATLAS / '+e(spec.get('security_code',''))).replace('SECURITIES RESEARCH / 贵州茅台','SECURITIES RESEARCH / '+e(spec['company'])).replace('2026.10.25',e(spec['date'])).replace('2026-10-25',e(spec['date']))
 
 def render_visual_gallery(spec, source_url=None, report_link='../证券投资分析研究图册.html'):
