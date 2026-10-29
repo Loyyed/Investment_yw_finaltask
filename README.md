@@ -77,3 +77,6 @@ python scripts/check_bundle.py
 
 
 图形样式可复用：细线、阶梯、哑铃、构成条带、垂线散点等9种编码，支持重播、原值批注与离线图鉴。方法见[图形复刻与迁移](skills/investment-insight-forecast/references/visual-replication.md)。公司自己提供已绑定的数据与visual配置，通用工具不携带案例数字。
+
+
+研究深化升级：侧栏可搜索方法知识库，支持精确收入桥与估值资格检查，见[操作说明](docs/2026-10-29-研究深化与知识库.md)。

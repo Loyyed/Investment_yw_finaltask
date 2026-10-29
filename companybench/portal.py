@@ -83,6 +83,9 @@ def make_server(root=ROOT,port=0):
                 if route.path in ('/assets/ui.js','/assets/ui.css'):
                     name=route.path.rsplit('/',1)[1]
                     self.send((Path(__file__).parent/name).read_bytes(),content='text/javascript; charset=utf-8' if name.endswith('.js') else 'text/css; charset=utf-8');return
+                if route.path=='/knowledge':
+                    from .research_depth import knowledge_page
+                    self.send(knowledge_page(token),content='text/html; charset=utf-8',interactive=True);return
                 if route.path=='/api/state':
                     entries=inventory(root);selected=query.get('project',[''])[0];value={'projects':[{'id':k,**project_info(e),'mode':e['mode']} for k,e in entries.items()], 'single_project':(root/'project.json').exists()}
                     if selected:
